@@ -9,41 +9,15 @@
 <body>
   <header>
     <h1>CRM для аудита склада — Октябрь 2025</h1>
-    <div class="subtitle">Панель руководителя</div>
+    <div class="subtitle">Подключено к Supabase</div>
   </header>
 
   <div class="main-content">
-    <div class="user-info">
-      <div>Режим: <strong>Руководитель</strong></div>
-      <div>Вы можете просматривать план, комментировать и назначать встречи</div>
-      <!-- Скрытая ссылка для аудитора -->
-      <div style="margin-top:20px; font-size:12px; color:#999;">
-        <a href="auditor.html" style="color:#666;">Вход для аудитора</a>
-      </div>
-    </div>
-
     <div id="weeks-container">
-      <!-- Недели будут загружены здесь -->
+      <p>Загрузка данных из Supabase...</p>
     </div>
   </div>
 
-  <div id="notification"></div>
-
-  <footer>
-    CRM для аудита склада | GitHub Pages + Supabase
-  </footer>
-
-  <script type="module">
-    import { supabase } from './js/auth.js';
-    import { loadWeeks } from './js/weeks.js';
-    import { renderWeeks } from './js/ui.js';
-
-    async function init() {
-      const weeks = await loadWeeks();
-      renderWeeks(weeks, { email: 'owner@example.com' }); // Руководитель без авторизации
-    }
-
-    init();
-  </script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
