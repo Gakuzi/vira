@@ -56,96 +56,6 @@
     <div class="notification" id="notification"></div>
   </div>
 
-  <!-- Скрытая форма создания недели -->
-  <div id="week-form" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;">
-    <div class="modal-content" style="width:90%; max-width:600px;">
-      <div class="modal-header">
-        <h2 class="modal-title">Создать неделю</h2>
-        <button class="close-modal" onclick="closeWeekForm()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label>Название недели</label>
-          <input type="text" id="week-title" class="form-control" placeholder="Например: Неделя 1: Знакомство">
-        </div>
-        <div class="form-row">
-          <label>Описание работ</label>
-          <textarea id="week-description" class="form-control" rows="4" placeholder="Общее описание работ на неделю..."></textarea>
-        </div>
-        <div class="form-row">
-          <label>Дата начала</label>
-          <input type="text" id="week-start" class="date-input" placeholder="ДД.ММ.ГГГГ">
-        </div>
-        <div class="form-row">
-          <label>Дата окончания</label>
-          <input type="text" id="week-end" class="date-input" placeholder="ДД.ММ.ГГГГ">
-        </div>
-        <button class="btn btn-primary" onclick="saveWeek()">Создать неделю</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Скрытая форма плана дня -->
-  <div id="day-plan-form" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;">
-    <div class="modal-content" style="width:90%; max-width:600px;">
-      <div class="modal-header">
-        <h2 class="modal-title">План на <span id="plan-date"></span></h2>
-        <button class="close-modal" onclick="closeDayPlanForm()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div id="day-tasks-container"></div>
-        <button class="btn btn-outline" onclick="addTaskField()">➕ Добавить задачу</button>
-        <button class="btn btn-primary" onclick="saveDayPlan()" style="margin-top: 16px;">Сохранить план</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Скрытая форма события -->
-  <div id="event-form" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;">
-    <div class="modal-content" style="width:90%; max-width:600px;">
-      <div class="modal-header">
-        <h2 class="modal-title">Новое событие</h2>
-        <button class="close-modal" onclick="closeEventForm()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <label>Тип события</label>
-          <select id="event-type" class="form-control">
-            <option value="task">✅ Задача</option>
-            <option value="interview">🎤 Интервью</option>
-            <option value="note">📝 Заметка</option>
-            <option value="scheme">📊 Схема</option>
-            <option value="document">📎 Документ</option>
-          </select>
-        </div>
-        <div id="event-content-field">
-          <div class="form-row">
-            <label>Содержание</label>
-            <textarea id="event-content" class="form-control" rows="4"></textarea>
-          </div>
-        </div>
-        <div id="scheme-editor" class="hidden">
-          <div class="form-row">
-            <label>Код схемы (Mermaid)</label>
-            <textarea id="scheme-code" class="form-control" rows="6">graph LR
-A[Склад] --> B[Выдача]
-B --> C[Объект]
-C --> D[Возврат]</textarea>
-          </div>
-          <div id="scheme-preview" class="scheme-container"></div>
-        </div>
-        <div id="file-upload" class="hidden">
-          <div class="form-row">
-            <label>Прикрепить файл</label>
-            <input type="file" id="file-input" class="form-control" accept="*/*">
-            <div id="file-preview" style="margin-top: 12px;"></div>
-          </div>
-        </div>
-        <button class="btn btn-primary" onclick="saveEvent()" style="margin-top: 16px;">Добавить событие</button>
-      </div>
-    </div>
-  </div>
-
   <div class="footer">
     CRM для аудита склада | Аудитор
   </div>
@@ -168,45 +78,46 @@ C --> D[Возврат]</textarea>
     let currentDayDate = null;
 
     // === ФУНКЦИИ ФОРМ ===
-    function openWeekForm() {
-      document.getElementById('week-form').classList.remove('hidden');
+    function showWeekForm(weekId = null) {
+      const container = document.getElementById(`week-form-${weekId || 'new'}`);
+      if (container) {
+        container.classList.remove('hidden');
+      }
     }
 
-    function closeWeekForm() {
-      document.getElementById('week-form').classList.add('hidden');
-      document.getElementById('week-title').value = '';
-      document.getElementById('week-description').value = '';
-      document.getElementById('week-start').value = '';
-      document.getElementById('week-end').value = '';
-      delete document.getElementById('week-form').dataset.weekId;
+    function hideWeekForm(weekId = null) {
+      const container = document.getElementById(`week-form-${weekId || 'new'}`);
+      if (container) {
+        container.classList.add('hidden');
+      }
     }
 
-    function openDayPlanForm() {
-      document.getElementById('day-plan-form').classList.remove('hidden');
+    function showDayPlanForm(weekId, dateStr) {
+      const container = document.getElementById(`day-plan-form-${weekId}-${dateStr}`);
+      if (container) {
+        container.classList.remove('hidden');
+      }
     }
 
-    function closeDayPlanForm() {
-      document.getElementById('day-plan-form').classList.add('hidden');
-      document.getElementById('day-tasks-container').innerHTML = '';
+    function hideDayPlanForm(weekId, dateStr) {
+      const container = document.getElementById(`day-plan-form-${weekId}-${dateStr}`);
+      if (container) {
+        container.classList.add('hidden');
+      }
     }
 
-    function openEventForm() {
-      document.getElementById('event-form').classList.remove('hidden');
+    function showEventForm(weekId, dateStr) {
+      const container = document.getElementById(`event-form-${weekId}-${dateStr}`);
+      if (container) {
+        container.classList.remove('hidden');
+      }
     }
 
-    function closeEventForm() {
-      document.getElementById('event-form').classList.add('hidden');
-      document.getElementById('event-type').value = 'task';
-      document.getElementById('event-content').value = '';
-      document.getElementById('file-preview').innerHTML = '';
-      document.getElementById('scheme-code').value = `graph LR
-A[Склад] --> B[Выдача]
-B --> C[Объект]
-C --> D[Возврат]`;
-      document.getElementById('event-content-field').classList.remove('hidden');
-      document.getElementById('scheme-editor').classList.add('hidden');
-      document.getElementById('file-upload').classList.add('hidden');
-      document.getElementById('file-input').value = '';
+    function hideEventForm(weekId, dateStr) {
+      const container = document.getElementById(`event-form-${weekId}-${dateStr}`);
+      if (container) {
+        container.classList.add('hidden');
+      }
     }
 
     // === UI ФУНКЦИИ ===
@@ -272,6 +183,29 @@ C --> D[Возврат]`;
           </div>
           
           <div class="days-grid" id="days-${week.id}" style="display:none;"></div>
+          
+          <!-- Форма создания недели (скрыта по умолчанию) -->
+          <div id="week-form-${week.id}" class="hidden" style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px;">
+            <h4>Редактировать неделю</h4>
+            <div class="form-row">
+              <label>Название недели</label>
+              <input type="text" id="week-title-${week.id}" class="form-control" value="${week.title}" placeholder="Например: Неделя 1: Знакомство">
+            </div>
+            <div class="form-row">
+              <label>Описание работ</label>
+              <textarea id="week-description-${week.id}" class="form-control" rows="4" placeholder="Общее описание работ на неделю...">${week.description || ''}</textarea>
+            </div>
+            <div class="form-row">
+              <label>Дата начала</label>
+              <input type="text" id="week-start-${week.id}" class="date-input" value="${formatDate(week.start_date)}" placeholder="ДД.ММ.ГГГГ">
+            </div>
+            <div class="form-row">
+              <label>Дата окончания</label>
+              <input type="text" id="week-end-${week.id}" class="date-input" value="${formatDate(week.end_date)}" placeholder="ДД.ММ.ГГГГ">
+            </div>
+            <button class="btn btn-primary" onclick="saveWeek(${week.id})">Сохранить</button>
+            <button class="btn btn-secondary" onclick="hideWeekForm(${week.id})">Отмена</button>
+          </div>
         </div>
       `).join('');
       
@@ -392,6 +326,55 @@ C --> D[Возврат]`;
                     onkeypress="handleComment(event, ${weekId}, '${dateStr}')"></textarea>
                 </div>
               </div>
+              
+              <!-- Форма редактирования плана дня (скрыта по умолчанию) -->
+              <div id="day-plan-form-${weekId}-${dateStr}" class="hidden" style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px;">
+                <h4>План на день</h4>
+                <div id="day-tasks-container-${weekId}-${dateStr}"></div>
+                <button class="btn btn-outline" onclick="addTaskField(${weekId}, '${dateStr}')">➕ Добавить задачу</button>
+                <button class="btn btn-primary" onclick="saveDayPlan(${weekId}, '${dateStr}')">Сохранить план</button>
+                <button class="btn btn-secondary" onclick="hideDayPlanForm(${weekId}, '${dateStr}')">Отмена</button>
+              </div>
+              
+              <!-- Форма добавления события (скрыта по умолчанию) -->
+              <div id="event-form-${weekId}-${dateStr}" class="hidden" style="margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px;">
+                <h4>Новое событие</h4>
+                <div class="form-row">
+                  <label>Тип события</label>
+                  <select id="event-type-${weekId}-${dateStr}" class="form-control">
+                    <option value="task">✅ Задача</option>
+                    <option value="interview">🎤 Интервью</option>
+                    <option value="note">📝 Заметка</option>
+                    <option value="scheme">📊 Схема</option>
+                    <option value="document">📎 Документ</option>
+                  </select>
+                </div>
+                <div id="event-content-field-${weekId}-${dateStr}">
+                  <div class="form-row">
+                    <label>Содержание</label>
+                    <textarea id="event-content-${weekId}-${dateStr}" class="form-control" rows="4"></textarea>
+                  </div>
+                </div>
+                <div id="scheme-editor-${weekId}-${dateStr}" class="hidden">
+                  <div class="form-row">
+                    <label>Код схемы (Mermaid)</label>
+                    <textarea id="scheme-code-${weekId}-${dateStr}" class="form-control" rows="6">graph LR
+A[Склад] --> B[Выдача]
+B --> C[Объект]
+C --> D[Возврат]</textarea>
+                  </div>
+                  <div id="scheme-preview-${weekId}-${dateStr}" class="scheme-container"></div>
+                </div>
+                <div id="file-upload-${weekId}-${dateStr}" class="hidden">
+                  <div class="form-row">
+                    <label>Прикрепить файл</label>
+                    <input type="file" id="file-input-${weekId}-${dateStr}" class="form-control" accept="*/*">
+                    <div id="file-preview-${weekId}-${dateStr}" style="margin-top: 12px;"></div>
+                  </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveEvent(${weekId}, '${dateStr}')">Добавить событие</button>
+                <button class="btn btn-secondary" onclick="hideEventForm(${weekId}, '${dateStr}')">Отмена</button>
+              </div>
             </div>
           `);
         }
@@ -498,28 +481,47 @@ C --> D[Возврат]`;
     };
 
     window.createWeek = function() {
-      openWeekForm();
+      const container = document.getElementById('weeks-container');
+      const newWeekId = Date.now();
+      container.insertAdjacentHTML('beforeend', `
+        <div class="card">
+          <div class="week-header">
+            <div class="week-title">Создание новой недели</div>
+          </div>
+          <div id="week-form-new" style="padding: 20px; background: #f8fafc; border-radius: 12px;">
+            <h4>Новая неделя</h4>
+            <div class="form-row">
+              <label>Название недели</label>
+              <input type="text" id="week-title-new" class="form-control" placeholder="Например: Неделя 1: Знакомство">
+            </div>
+            <div class="form-row">
+              <label>Описание работ</label>
+              <textarea id="week-description-new" class="form-control" rows="4" placeholder="Общее описание работ на неделю..."></textarea>
+            </div>
+            <div class="form-row">
+              <label>Дата начала</label>
+              <input type="text" id="week-start-new" class="date-input" placeholder="ДД.ММ.ГГГГ">
+            </div>
+            <div class="form-row">
+              <label>Дата окончания</label>
+              <input type="text" id="week-end-new" class="date-input" placeholder="ДД.ММ.ГГГГ">
+            </div>
+            <button class="btn btn-primary" onclick="saveNewWeek()">Создать неделю</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('weeks-container').removeChild(document.getElementById('week-form-new').parentNode)">Отмена</button>
+          </div>
+        </div>
+      `);
     };
 
-    window.editWeek = async (weekId) => {
-      const weeks = await loadWeeks();
-      const week = weeks.find(w => w.id === weekId);
-      if (!week) return;
-      
-      document.getElementById('week-title').value = week.title;
-      document.getElementById('week-description').value = week.description || '';
-      document.getElementById('week-start').value = formatDate(week.start_date);
-      document.getElementById('week-end').value = formatDate(week.end_date);
-      
-      document.getElementById('week-form').dataset.weekId = weekId;
-      openWeekForm();
+    window.editWeek = function(weekId) {
+      showWeekForm(weekId);
     };
 
-    window.saveWeek = async function() {
-      const title = document.getElementById('week-title').value;
-      const description = document.getElementById('week-description').value;
-      const startStr = document.getElementById('week-start').value;
-      const endStr = document.getElementById('week-end').value;
+    window.saveWeek = async function(weekId) {
+      const title = document.getElementById(`week-title-${weekId}`).value;
+      const description = document.getElementById(`week-description-${weekId}`).value;
+      const startStr = document.getElementById(`week-start-${weekId}`).value;
+      const endStr = document.getElementById(`week-end-${weekId}`).value;
       
       const start = parseRussianDate(startStr);
       const end = parseRussianDate(endStr);
@@ -530,24 +532,41 @@ C --> D[Возврат]`;
       }
       
       try {
-        const weekId = document.getElementById('week-form').dataset.weekId;
-        if (weekId) {
-          await updateWeek(parseInt(weekId), { 
-            title, 
-            description,
-            start_date: start, 
-            end_date: end 
-          });
-        } else {
-          await createWeek({ 
-            title, 
-            description,
-            start_date: start, 
-            end_date: end,
-            plan: {}
-          });
-        }
-        closeWeekForm();
+        await updateWeek(weekId, { 
+          title, 
+          description,
+          start_date: start, 
+          end_date: end 
+        });
+        hideWeekForm(weekId);
+        initApp();
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    };
+
+    window.saveNewWeek = async function() {
+      const title = document.getElementById('week-title-new').value;
+      const description = document.getElementById('week-description-new').value;
+      const startStr = document.getElementById('week-start-new').value;
+      const endStr = document.getElementById('week-end-new').value;
+      
+      const start = parseRussianDate(startStr);
+      const end = parseRussianDate(endStr);
+      
+      if (!title || !start || !end) {
+        alert('Заполните все поля');
+        return;
+      }
+      
+      try {
+        await createWeek({ 
+          title, 
+          description,
+          start_date: start, 
+          end_date: end,
+          plan: {}
+        });
         initApp();
       } catch (error) {
         alert('Ошибка: ' + error.message);
@@ -555,33 +574,29 @@ C --> D[Возврат]`;
     };
 
     window.editDayPlan = function(weekId, dateStr) {
-      currentWeekId = weekId;
-      currentDayDate = dateStr;
-      document.getElementById('plan-date').textContent = formatDate(dateStr);
-      
+      showDayPlanForm(weekId, dateStr);
       loadWeeks().then(weeks => {
         const week = weeks.find(w => w.id === weekId);
         const tasks = week?.plan?.[dateStr]?.tasks || [];
-        renderTaskFields(tasks);
-        openDayPlanForm();
+        renderTaskFields(weekId, dateStr, tasks);
       });
     };
 
-    function renderTaskFields(tasks) {
-      const container = document.getElementById('day-tasks-container');
+    function renderTaskFields(weekId, dateStr, tasks) {
+      const container = document.getElementById(`day-tasks-container-${weekId}-${dateStr}`);
       container.innerHTML = '';
       
       tasks.forEach((task, index) => {
-        addTaskField(task);
+        addTaskField(weekId, dateStr, task);
       });
       
       if (tasks.length === 0) {
-        addTaskField();
+        addTaskField(weekId, dateStr);
       }
     }
 
-    window.addTaskField = function(task = '') {
-      const container = document.getElementById('day-tasks-container');
+    window.addTaskField = function(weekId, dateStr, task = '') {
+      const container = document.getElementById(`day-tasks-container-${weekId}-${dateStr}`);
       const index = container.children.length;
       const div = document.createElement('div');
       div.className = 'form-row';
@@ -592,40 +607,38 @@ C --> D[Возврат]`;
       container.appendChild(div);
     };
 
-    window.saveDayPlan = async function() {
-      const inputs = document.querySelectorAll('.task-input');
+    window.saveDayPlan = async function(weekId, dateStr) {
+      const inputs = document.querySelectorAll(`#day-tasks-container-${weekId}-${dateStr} .task-input`);
       const tasks = Array.from(inputs)
         .map(input => input.value.trim())
         .filter(task => task);
       
       const weeks = await loadWeeks();
-      const week = weeks.find(w => w.id === currentWeekId);
+      const week = weeks.find(w => w.id === weekId);
       if (!week) return;
       
       const updatedPlan = { ...(week.plan || {}) };
-      updatedPlan[currentDayDate] = {
+      updatedPlan[dateStr] = {
         tasks: tasks,
         approved: false
       };
       
-      await updateWeek(currentWeekId, { plan: updatedPlan });
-      closeDayPlanForm();
+      await updateWeek(weekId, { plan: updatedPlan });
+      hideDayPlanForm(weekId, dateStr);
       initApp();
     };
 
     window.openEventModal = function(weekId, dateStr) {
-      currentWeekId = weekId;
-      currentDayDate = dateStr;
-      openEventForm();
+      showEventForm(weekId, dateStr);
     };
 
-    window.saveEvent = async function() {
-      const type = document.getElementById('event-type').value;
+    window.saveEvent = async function(weekId, dateStr) {
+      const type = document.getElementById(`event-type-${weekId}-${dateStr}`).value;
       let content = '';
       let fileMetadata = null;
       
       if (type === 'document') {
-        const fileInput = document.getElementById('file-input');
+        const fileInput = document.getElementById(`file-input-${weekId}-${dateStr}`);
         if (fileInput.files.length === 0) {
           alert('Выберите файл');
           return;
@@ -640,9 +653,9 @@ C --> D[Возврат]`;
           return;
         }
       } else if (type === 'scheme') {
-        content = document.getElementById('scheme-code').value;
+        content = document.getElementById(`scheme-code-${weekId}-${dateStr}`).value;
       } else {
-        content = document.getElementById('event-content').value;
+        content = document.getElementById(`event-content-${weekId}-${dateStr}`).value;
       }
       
       if (!content.trim()) {
@@ -652,16 +665,16 @@ C --> D[Возврат]`;
       
       try {
         await createEvent({
-          week_id: currentWeekId,
-          day_date: currentDayDate,
+          week_id: weekId,
+          day_date: dateStr,
           type,
           author: 'Климов Е.А.',
           content,
-          file_metadata: fileMetadata,
+          file_meta fileMetadata,
           is_approved: false
         });
         
-        closeEventForm();
+        hideEventForm(weekId, dateStr);
         initApp();
       } catch (error) {
         alert('Ошибка: ' + error.message);
@@ -730,48 +743,64 @@ C --> D[Возврат]`;
     };
 
     // Обработчик файла
-    document.getElementById('file-input')?.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      const preview = document.getElementById('file-preview');
-      preview.innerHTML = `
-        <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
-          <strong>Файл:</strong> ${file.name}<br>
-          <strong>Размер:</strong> ${(file.size / 1024).toFixed(1)} КБ<br>
-          <strong>Тип:</strong> ${file.type || 'неизвестен'}
-        </div>
-      `;
+    document.addEventListener('change', function(e) {
+      if (e.target.id.startsWith('file-input-')) {
+        const idParts = e.target.id.split('-');
+        const weekId = idParts[2];
+        const dateStr = idParts[3];
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const preview = document.getElementById(`file-preview-${weekId}-${dateStr}`);
+        preview.innerHTML = `
+          <div style="padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <strong>Файл:</strong> ${file.name}<br>
+            <strong>Размер:</strong> ${(file.size / 1024).toFixed(1)} КБ<br>
+            <strong>Тип:</strong> ${file.type || 'неизвестен'}
+          </div>
+        `;
+      }
     });
 
     // Обработчик схемы
-    function renderSchemePreview() {
-      const code = document.getElementById('scheme-code').value;
-      const preview = document.getElementById('scheme-preview');
-      preview.innerHTML = `<pre class="mermaid">${code}</pre>`;
-      mermaid.run({ querySelector: '.mermaid' });
-    }
-
-    document.getElementById('scheme-code')?.addEventListener('input', debounce(renderSchemePreview, 500));
+    document.addEventListener('input', function(e) {
+      if (e.target.id.startsWith('scheme-code-')) {
+        const idParts = e.target.id.split('-');
+        const weekId = idParts[2];
+        const dateStr = idParts[3];
+        const code = e.target.value;
+        const preview = document.getElementById(`scheme-preview-${weekId}-${dateStr}`);
+        preview.innerHTML = `<pre class="mermaid">${code}</pre>`;
+        mermaid.run({ querySelector: '.mermaid' });
+      }
+    });
 
     // Обработчик типа события
-    document.getElementById('event-type')?.addEventListener('change', function() {
-      const type = this.value;
-      const contentField = document.getElementById('event-content-field');
-      const schemeEditor = document.getElementById('scheme-editor');
-      const fileUpload = document.getElementById('file-upload');
-      
-      contentField.classList.add('hidden');
-      schemeEditor.classList.add('hidden');
-      fileUpload.classList.add('hidden');
-      
-      if (['task', 'interview', 'note', 'meeting', 'comment'].includes(type)) {
-        contentField.classList.remove('hidden');
-      } else if (type === 'scheme') {
-        schemeEditor.classList.remove('hidden');
-        renderSchemePreview();
-      } else if (type === 'document') {
-        fileUpload.classList.remove('hidden');
+    document.addEventListener('change', function(e) {
+      if (e.target.id.startsWith('event-type-')) {
+        const idParts = e.target.id.split('-');
+        const weekId = idParts[2];
+        const dateStr = idParts[3];
+        const type = e.target.value;
+        const contentField = document.getElementById(`event-content-field-${weekId}-${dateStr}`);
+        const schemeEditor = document.getElementById(`scheme-editor-${weekId}-${dateStr}`);
+        const fileUpload = document.getElementById(`file-upload-${weekId}-${dateStr}`);
+        
+        contentField.classList.add('hidden');
+        schemeEditor.classList.add('hidden');
+        fileUpload.classList.add('hidden');
+        
+        if (['task', 'interview', 'note', 'meeting', 'comment'].includes(type)) {
+          contentField.classList.remove('hidden');
+        } else if (type === 'scheme') {
+          schemeEditor.classList.remove('hidden');
+          const code = document.getElementById(`scheme-code-${weekId}-${dateStr}`).value;
+          const preview = document.getElementById(`scheme-preview-${weekId}-${dateStr}`);
+          preview.innerHTML = `<pre class="mermaid">${code}</pre>`;
+          mermaid.run({ querySelector: '.mermaid' });
+        } else if (type === 'document') {
+          fileUpload.classList.remove('hidden');
+        }
       }
     });
 
@@ -796,13 +825,6 @@ C --> D[Возврат]`;
       });
       
       // Глобальные функции
-      window.closeWeekForm = closeWeekForm;
-      window.closeDayPlanForm = closeDayPlanForm;
-      window.closeEventForm = closeEventForm;
-      window.saveWeek = saveWeek;
-      window.saveDayPlan = saveDayPlan;
-      window.addTaskField = addTaskField;
-      window.saveEvent = saveEvent;
       window.logout = async () => {
         await signOut();
         currentUser = null;
