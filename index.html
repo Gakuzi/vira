@@ -164,9 +164,8 @@ if (data.session) {
     document.getElementById('google-login').addEventListener('click', () => {
       supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
+        redirectTo: 'https://gakuzi.github.io/vira/' // ← Полный URL с /vira/
+  }
       });
     });
 
@@ -181,8 +180,8 @@ if (data.session) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin
-        }
+    emailRedirectTo: 'https://gakuzi.github.io/vira/' // ← Полный URL с /vira/
+  }
       });
       
       if (error) {
