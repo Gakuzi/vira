@@ -28,6 +28,14 @@ export async function createWeek(weekData) {
   return data[0];
 }
 
+export async function updateWeek(weekId, updates) {
+  const { error } = await supabase
+    .from('weeks')
+    .update(updates)
+    .eq('id', weekId);
+  if (error) throw error;
+}
+
 export async function createEvent(eventData) {
   const { data, error } = await supabase
     .from('events')
@@ -35,12 +43,4 @@ export async function createEvent(eventData) {
     .select();
   if (error) throw error;
   return data[0];
-}
-
-export async function updateWeek(weekId, updates) {
-  const { error } = await supabase
-    .from('weeks')
-    .update(updates)
-    .eq('id', weekId);
-  if (error) throw error;
 }
