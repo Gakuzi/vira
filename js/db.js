@@ -1,10 +1,5 @@
-// js/db.js
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { supabase } from './auth.js';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Загрузка недель
 export async function loadWeeks() {
   const { data, error } = await supabase
     .from('weeks')
@@ -14,7 +9,6 @@ export async function loadWeeks() {
   return data;
 }
 
-// Загрузка событий для недели
 export async function loadEvents(weekId) {
   const { data, error } = await supabase
     .from('events')
@@ -25,7 +19,6 @@ export async function loadEvents(weekId) {
   return data;
 }
 
-// Создание недели
 export async function createWeek(weekData) {
   const { data, error } = await supabase
     .from('weeks')
@@ -35,7 +28,6 @@ export async function createWeek(weekData) {
   return data[0];
 }
 
-// Создание события
 export async function createEvent(eventData) {
   const { data, error } = await supabase
     .from('events')
@@ -45,7 +37,6 @@ export async function createEvent(eventData) {
   return data[0];
 }
 
-// Обновление недели
 export async function updateWeek(weekId, updates) {
   const { error } = await supabase
     .from('weeks')
