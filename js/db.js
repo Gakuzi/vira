@@ -1,24 +1,27 @@
 import { supabase } from './auth.js';
 
-export async function loadWeeks() {
-  const { data, error } = await supabase
-    .from('weeks')
-    .select('*')
-    .order('start_date', { ascending: true });
+// === РАБОТА С ФАЙЛАМИ ===
+export async function uploadFile(file) {
+  const fileName = `${Date.now()}_${file.name}`;
+  const { data, error } = await supabase.storage
+    .from('audit-files')
+    .upload(`documents/${fileName}`, file, { upsert: true });
+  
   if (error) throw error;
-  return data;
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('audit-files')
+    .getPublicUrl(`documents/${fileName}`);
+  
+  return {
+    name: file.name,
+    url: publicUrl,
+    type: file.type,
+    size: file.size
+  };
 }
 
-export async function loadEvents(weekId) {
-  const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .eq('week_id', weekId)
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data;
-}
-
+// === РАБОТА С НЕДЕЛЯМИ ===
 export async function createWeek(weekData) {
   const { data, error } = await supabase
     .from('weeks')
@@ -36,6 +39,16 @@ export async function updateWeek(weekId, updates) {
   if (error) throw error;
 }
 
+export async function loadWeeks() {
+  const { data, error } = await supabase
+    .from('weeks')
+    .select('*')
+    .order('start_date', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+// === РАБОТА С СОБЫТИЯМИ ===
 export async function createEvent(eventData) {
   const { data, error } = await supabase
     .from('events')
@@ -43,4 +56,14 @@ export async function createEvent(eventData) {
     .select();
   if (error) throw error;
   return data[0];
+}
+
+export async function loadEvents(weekId) {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('week_id', weekId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data;
 }
