@@ -197,6 +197,7 @@ C --> D[Возврат]`;
       }
     }
 
+    // Закрытие по клику на фон
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('modal')) {
         const modalId = e.target.id;
@@ -204,6 +205,7 @@ C --> D[Возврат]`;
       }
     });
 
+    // Закрытие по Escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         document.querySelectorAll('.modal:not(.hidden)').forEach(modal => {
@@ -660,7 +662,7 @@ C --> D[Возврат]`;
           type,
           author: 'Климов Е.А.',
           content,
-          file_metadata: fileMetadata,
+          file_meta fileMetadata,
           is_approved: false
         });
         
@@ -798,7 +800,7 @@ C --> D[Возврат]`;
         }
       });
       
-      // Глобальные функции (обязательно ДО init())
+      // Глобальные функции
       window.closeModal = closeModal;
       window.openModal = openModal;
       window.saveWeek = saveWeek;
