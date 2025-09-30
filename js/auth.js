@@ -23,9 +23,10 @@ export async function handleAuthHash() {
   window.history.replaceState({}, document.title, window.location.pathname);
 
   try {
-    const {  { user }, error } = await supabase.auth.getUser(accessToken);
+    // ПРАВИЛЬНАЯ ДЕСТРУКТУРИЗАЦИЯ:
+    const { data, error } = await supabase.auth.getUser(accessToken);
     if (error) throw error;
-    return user;
+    return data.user; // ← user находится внутри data
   } catch (error) {
     console.error('Ошибка авторизации:', error);
     return null;
@@ -34,7 +35,11 @@ export async function handleAuthHash() {
 
 // Проверка существующей сессии
 export async function checkSession() {
-  const { data } = await supabase.auth.getSession();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    console.error('Ошибка сессии:', error);
+    return null;
+  }
   return data.session?.user || null;
 }
 
