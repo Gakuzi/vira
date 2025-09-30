@@ -164,8 +164,8 @@ if (data.session) {
     document.getElementById('google-login').addEventListener('click', () => {
       supabase.auth.signInWithOAuth({
         provider: 'google',
-        redirectTo: 'https://gakuzi.github.io/vira/' // ← Полный URL с /vira/
-  }
+        redirectTo: 'https://gakuzi.github.io/vira/'
+        }
       });
     });
 
