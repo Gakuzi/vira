@@ -4,10 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CRM для аудита склада</title>
-  <!-- Supabase JS SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-  <!-- Mermaid для схем -->
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
   <style>
     :root {
       --primary: #2563eb;
@@ -30,58 +27,14 @@
     .btn-email { background: var(--primary); color: white; margin-top: 16px; }
     .user-info { margin: 20px 0; padding: 16px; background: #eff6ff; border-radius: 12px; }
     .hidden { display: none; }
-
-    /* Основной интерфейс */
-    .week-card { background: var(--card); border-radius: 16px; padding: 24px; margin-bottom: 24px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.03); }
-    .week-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-    .week-title { font-size: 20px; font-weight: 700; cursor: pointer; }
-    .week-meta { display: flex; gap: 12px; align-items: center; }
-    .week-status { padding: 4px 12px; border-radius: 20px; font-size: 14px; }
-    .status-draft { background: #fef3c7; color: #92400e; }
-    .status-approved { background: #dcfce7; color: #166534; }
-    .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; margin-top: 12px; overflow: hidden; }
-    .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s; }
-
-    .days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 20px 0; display: none; }
-    .day-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-    .day-header { display: flex; justify-content: space-between; margin-bottom: 12px; }
-    .day-date { font-weight: 600; font-size: 14px; }
-    .day-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 8px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-    .btn-warning { background: var(--warning); color: white; padding: 8px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; border: none; }
-
-    .event { display: flex; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--border); }
-    .event-icon { width: 36px; height: 36px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; font-size: 16px; }
-    .event-content { flex: 1; }
-    .event-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
-    .event-author { font-weight: 600; font-size: 13px; }
-    .event-time { color: var(--gray); font-size: 12px; }
-    .event-text { margin: 6px 0; font-size: 14px; }
-    .event-attachment { display: inline-block; margin-top: 6px; padding: 4px 10px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px; font-size: 12px; }
-
-    textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; margin-top: 8px; min-height: 60px; resize: vertical; font-size: 14px; }
-    .comment-form { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
-
-    #notification { 
-      position: fixed; 
-      top: 20px; 
-      right: 20px; 
-      background: var(--success); 
-      color: white; 
-      padding: 12px 20px; 
-      border-radius: 8px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 2000;
-      display: none;
-    }
-
+    .main-content { max-width: 1000px; margin: 0 auto; }
     footer { text-align: center; margin-top: 40px; color: var(--gray); font-size: 14px; }
   </style>
 </head>
 <body>
   <header>
     <h1>CRM для аудита склада — Октябрь 2025</h1>
-    <div class="subtitle">Развёрнуто на GitHub Pages + Supabase</div>
+    <div class="subtitle">GitHub Pages + Supabase</div>
   </header>
 
   <!-- Экран авторизации -->
@@ -101,18 +54,18 @@
   </div>
 
   <!-- Основной интерфейс -->
-  <div id="main-app" class="hidden">
+  <div id="main-app" class="hidden main-content">
     <div class="user-info">
       <div>Вы вошли как: <strong id="user-email"></strong></div>
       <div>Роль: <span id="user-role"></span></div>
       <button onclick="logout()" style="margin-top:10px; padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:6px;">Выйти</button>
     </div>
 
-    <!-- Недели будут загружаться из Supabase -->
-    <div id="weeks-container"></div>
+    <div id="app-content">
+      <h2>Добро пожаловать в CRM для аудита!</h2>
+      <p>Здесь будет отображаться план работ, интервью, схемы и встречи.</p>
+    </div>
   </div>
-
-  <div id="notification">🔔 Уведомление</div>
 
   <footer>
     CRM для аудита склада | GitHub Pages + Supabase
@@ -120,53 +73,44 @@
 
   <script>
     // === КОНФИГУРАЦИЯ SUPABASE ===
-    // ⚠️ ЗАМЕНИТЕ ЭТИ ЗНАЧЕНИЯ НА СВОИ ИЗ SUPABASE PROJECT SETTINGS
     const SUPABASE_URL = 'https://effpidrlccjmnxmbtkiz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZnBpZHJsY2NqbW54bWJ0a2l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDQ5NDUsImV4cCI6MjA3NDcyMDk0NX0.SwJumspCD2x1Fsul4yw2LBL-OSj-4giXeBl99D1fFLg';
-    
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // Ваш email для роли аудитора
     const AUDITOR_EMAIL = 'eklimov84@gmail.com';
 
     let currentUser = null;
-    let userRole = 'owner'; // по умолчанию
+    let userRole = 'owner';
 
-    // === Инициализация ===
+    // === Инициализация при загрузке ===
     document.addEventListener('DOMContentLoaded', async () => {
-      // Проверяем сессию
-      const { data, error } = await supabase.auth.getSession();
-if (error) {
-  console.error('Ошибка сессии:', error);
-  return;
-}
-if (data.session) {
-  // обработка сессии
-}
+      // Обработка OAuth-редиректа
+      const urlParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = urlParams.get('access_token');
       
-      // Обработка редиректа после OAuth
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('code')) {
-        await supabase.auth.exchangeCodeForSession(urlParams.get('code'));
+      if (accessToken) {
+        // Убираем хеш из URL для чистоты
         window.history.replaceState({}, document.title, window.location.pathname);
-        const { data, error } = await supabase.auth.getSession();
-if (error) {
-  console.error('Ошибка сессии:', error);
-  return;
-}
-if (data.session) {
-  // обработка сессии
-}
+        await initializeApp();
+        return;
+      }
+
+      // Проверка существующей сессии
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await handleAuthSuccess(data.session.user);
       }
     });
 
-    // === Авторизация ===
+    // === Обработчики кнопок ===
     document.getElementById('google-login').addEventListener('click', () => {
       supabase.auth.signInWithOAuth({
         provider: 'google',
-        redirectTo: 'https://gakuzi.github.io/vira/'
+        options: {
+          redirectTo: 'https://gakuzi.github.io/vira/'
         }
-      );
+      });
     });
 
     document.getElementById('email-login').addEventListener('click', () => {
@@ -180,7 +124,7 @@ if (data.session) {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-    emailRedirectTo: 'https://gakuzi.github.io/vira/' // ← Полный URL с /vira/
+          emailRedirectTo: 'https://gakuzi.github.io/vira/'
         }
       });
       
@@ -191,199 +135,40 @@ if (data.session) {
       }
     });
 
-    // === Успешный вход ===
+    // === Успешная авторизация ===
     async function handleAuthSuccess(user) {
       currentUser = user;
       document.getElementById('user-email').textContent = user.email;
       
       // Определяем роль
-      userRole = (user.email === AUDITOR_EMAIL) ? 'auditor' : 'owner';
+      userRole = (user.email.toLowerCase() === AUDITOR_EMAIL.toLowerCase()) ? 'auditor' : 'owner';
       document.getElementById('user-role').textContent = 
         userRole === 'auditor' ? 'Аудитор (полный доступ)' : 'Руководитель (наблюдатель)';
       
       // Показываем интерфейс
       document.getElementById('auth-screen').classList.add('hidden');
       document.getElementById('main-app').classList.remove('hidden');
-      
-      // Загружаем данные
-      await loadWeeks();
     }
 
+    // === Выход ===
     async function logout() {
       await supabase.auth.signOut();
       currentUser = null;
       userRole = 'owner';
       document.getElementById('main-app').classList.add('hidden');
       document.getElementById('auth-screen').classList.remove('hidden');
-      document.getElementById('weeks-container').innerHTML = '';
     }
 
-    // === Работа с данными Supabase ===
-    async function loadWeeks() {
-      const { data, error } = await supabase
-        .from('weeks')
-        .select('*')
-        .order('start_date', { ascending: true });
-      
-      if (error) {
-        console.error('Ошибка загрузки недель:', error);
-        // Для демо — создадим недели вручную
-        renderDemoWeeks();
+    // === Инициализация приложения после входа ===
+    async function initializeApp() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await handleAuthSuccess(data.session.user);
       } else {
-        renderWeeks(data);
+        // Если сессии нет — показываем форму входа
+        document.getElementById('auth-screen').classList.remove('hidden');
       }
     }
-
-    function renderDemoWeeks() {
-      const demoWeeks = [
-        { id: 1, title: 'Неделя 1: Знакомство', start_date: '2025-10-01', end_date: '2025-10-07', status: 'draft', progress: 0 },
-        { id: 2, title: 'Неделя 2: Объекты', start_date: '2025-10-08', end_date: '2025-10-14', status: 'draft', progress: 0 },
-        { id: 3, title: 'Неделя 3: Сверка', start_date: '2025-10-15', end_date: '2025-10-21', status: 'draft', progress: 0 },
-        { id: 4, title: 'Неделя 4: Отчёт', start_date: '2025-10-22', end_date: '2025-10-31', status: 'draft', progress: 0 }
-      ];
-      renderWeeks(demoWeeks);
-    }
-
-    function renderWeeks(weeks) {
-      const container = document.getElementById('weeks-container');
-      container.innerHTML = '';
-      
-      weeks.forEach(week => {
-        const weekEl = document.createElement('div');
-        weekEl.className = 'week-card';
-        weekEl.innerHTML = `
-          <div class="week-header">
-            <div class="week-title" onclick="toggleWeekDays(${week.id})">
-              📅 ${week.title} (${week.start_date} – ${week.end_date})
-            </div>
-            <div class="week-meta">
-              <div class="week-status ${week.status === 'approved' ? 'status-approved' : 'status-draft'}">
-                ${week.status === 'approved' ? 'Согласовано' : 'На согласовании'}
-              </div>
-              ${userRole === 'auditor' || week.status !== 'approved' ? 
-                `<button class="btn btn-success approve-btn" onclick="approveWeek(${week.id})">
-                  ${week.status === 'approved' ? 'Согласовано' : 'Согласовать'}
-                </button>` : ''
-              }
-            </div>
-          </div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${week.progress}%"></div></div>
-          <div class="days-grid" id="days-${week.id}"></div>
-        `;
-        container.appendChild(weekEl);
-        
-        // Загружаем дни для недели
-        loadDaysForWeek(week.id);
-      });
-    }
-
-    async function loadDaysForWeek(weekId) {
-      // В реальной версии: запрос к таблице days
-      // Для демо — генерируем дни
-      const daysContainer = document.getElementById(`days-${weekId}`);
-      if (!daysContainer) return;
-      
-      // Пример: 5 рабочих дней
-      for (let i = 1; i <= 5; i++) {
-        const dayEl = document.createElement('div');
-        dayEl.className = 'day-card';
-        dayEl.innerHTML = `
-          <div class="day-header">
-            <div class="day-date">День ${i}</div>
-          </div>
-          <div class="day-actions">
-            ${userRole === 'auditor' ? 
-              `<button class="btn-outline" onclick="openInterviewModal(${weekId}, ${i})">🎤 Интервью</button>
-               <button class="btn-outline" onclick="addNote(${weekId}, ${i})">📝 Заметка</button>` : ''
-            }
-            <button class="btn-warning" onclick="openMeetingForm(${weekId}, ${i})">📅 Встреча</button>
-          </div>
-          <div class="comment-form">
-            <label>Комментарий:</label>
-            <textarea placeholder="Ваш комментарий..."></textarea>
-            <button class="btn btn-primary" style="margin-top: 10px;" 
-              onclick="addComment(${weekId}, ${i})">Отправить</button>
-          </div>
-        `;
-        daysContainer.appendChild(dayEl);
-      }
-    }
-
-    // === Функции действий ===
-    async function approveWeek(weekId) {
-      if (userRole !== 'owner') {
-        alert('Только руководитель может согласовывать планы');
-        return;
-      }
-      
-      // Обновляем статус в Supabase
-      const { error } = await supabase
-        .from('weeks')
-        .update({ status: 'approved', progress: 25 })
-        .eq('id', weekId);
-      
-      if (error) {
-        alert('Ошибка: ' + error.message);
-      } else {
-        showNotification('План на неделю согласован!');
-        // Перезагружаем данные
-        await loadWeeks();
-      }
-    }
-
-    function addComment(weekId, dayId) {
-      const textarea = event.target.previousElementSibling;
-      const comment = textarea.value.trim();
-      if (!comment) return;
-      
-      // В реальной версии: сохранить в таблицу events
-      if (userRole === 'owner') {
-        showNotification('Новое сообщение от руководителя!');
-        // Здесь можно добавить отправку email/Telegram через внешний сервис
-      }
-      
-      textarea.value = '';
-    }
-
-    function showNotification(message) {
-      const notif = document.getElementById('notification');
-      notif.textContent = message;
-      notif.style.display = 'block';
-      setTimeout(() => notif.style.display = 'none', 5000);
-    }
-
-    // === Заглушки для аудитора ===
-    function openInterviewModal(weekId, dayId) {
-      if (userRole === 'auditor') {
-        alert('Форма интервью (в полной версии будет загрузка аудио)');
-      }
-    }
-
-    function addNote(weekId, dayId) {
-      if (userRole === 'auditor') {
-        const note = prompt('Ваши мысли:');
-        if (note) {
-          // Сохранить в Supabase
-        }
-      }
-    }
-
-    function openMeetingForm(weekId, dayId) {
-      alert('Форма встречи: дата, место, повестка');
-    }
-
-    // === Экспорт функций для onclick ===
-    window.toggleWeekDays = function(weekId) {
-      const daysGrid = document.getElementById(`days-${weekId}`);
-      if (daysGrid) {
-        daysGrid.style.display = daysGrid.style.display === 'grid' ? 'none' : 'grid';
-      }
-    };
-    window.approveWeek = approveWeek;
-    window.addComment = addComment;
-    window.openInterviewModal = openInterviewModal;
-    window.addNote = addNote;
-    window.openMeetingForm = openMeetingForm;
   </script>
 </body>
 </html>
