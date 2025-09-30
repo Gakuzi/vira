@@ -37,11 +37,13 @@
   </div>
 
   <script type="module">
-    import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
-    import { loadWeeks, loadEvents, createEvent } from './js/db.js';
-
+    // === КОНФИГУРАЦИЯ (должна совпадать с auditor.html) ===
+    const SUPABASE_URL = 'https://effpidrlccjmnxmbtkiz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZnBpZHJsY2NqbW54bWJ0a2l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDQ5NDUsImV4cCI6MjA3NDcyMDk0NX0.SwJumspCD2x1Fsul4yw2LBL-OSj-4giXeBl99D1fFLg';
+    
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // === ФУНКЦИИ ===
     function showNotification(message) {
       const notif = document.getElementById('notification');
       if (notif) {
@@ -51,7 +53,7 @@
       }
     }
 
-    // Рендеринг недель (без кнопок редактирования)
+    // === РЕНДЕРИНГ ===
     async function renderWeeks(weeks) {
       const container = document.getElementById('weeks-container');
       if (!container) return;
@@ -60,7 +62,7 @@
         <div class="card">
           <div class="week-header">
             <div class="week-title" onclick="toggleWeek(${week.id})">
-              📅 ${week.title} (${week.start_date} – ${week.end_date})
+              📅 ${week.title} (${formatDate(week.start_date)} – ${formatDate(week.end_date)})
             </div>
             <div class="week-meta">
               <span class="status-badge status-${week.status}">${getStatusText(week.status)}</span>
@@ -69,14 +71,42 @@
           <div class="progress-bar">
             <div class="progress-fill" style="width:${week.progress}%"></div>
           </div>
+          
+          <div class="recent-events">
+            <h3>Последние события</h3>
+            <div id="recent-${week.id}">Загрузка...</div>
+          </div>
+          
           <div class="days-grid" id="days-${week.id}" style="display:none;"></div>
         </div>
       `).join('');
+      
+      // Загрузка последних событий
+      weeks.forEach(async (week) => {
+        const events = await loadEvents(week.id);
+        const recentEvents = events.slice(-10).reverse();
+        const recentContainer = document.getElementById(`recent-${week.id}`);
+        if (recentContainer) {
+          recentContainer.innerHTML = recentEvents.length ? 
+            recentEvents.map(e => `
+              <div class="mini-event">
+                <div class="mini-event-icon">${getEventIcon(e.type)}</div>
+                <div class="mini-event-content">
+                  <strong>${e.author}</strong>: ${e.content?.substring(0, 80)}${e.content?.length > 80 ? '...' : ''}
+                  <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                    ${formatDateTime(e.created_at)}
+                  </div>
+                </div>
+              </div>
+            `).join('') : '<p style="color:#64748b;">Нет событий</p>';
+        }
+      });
     }
 
     function getStatusText(status) {
       const texts = {
         draft: 'Черновик',
+        pending_approval: 'На согласовании',
         approved: 'Согласовано',
         in_progress: 'В работе',
         completed: 'Завершено'
@@ -84,7 +114,6 @@
       return texts[status] || status;
     }
 
-    // Рендеринг дней (без редактирования плана)
     async function renderDays(weekId, week, events) {
       const container = document.getElementById(`days-${weekId}`);
       if (!container) return;
@@ -104,7 +133,7 @@
         const day = current.getDay();
         if (day !== 0 && day !== 6) {
           const dateStr = current.toISOString().split('T')[0];
-          const plan = week.plan?.[dateStr] || [];
+          const dayPlan = week.plan?.[dateStr] || { tasks: [], approved: false };
           
           daysHTML.push(`
             <div class="day-card">
@@ -112,11 +141,11 @@
                 <div class="day-date">${formatDate(dateStr)} (${getDayName(dateStr)})</div>
               </div>
               
-              ${plan.length ? `
+              ${dayPlan.tasks.length ? `
                 <div style="margin-bottom: 16px;">
-                  <strong>План:</strong>
+                  <strong>План ${dayPlan.approved ? '✅ Согласован' : '⏳ На согласовании'}:</strong>
                   <ul style="margin-top: 8px; padding-left: 20px;">
-                    ${plan.map(task => `<li>${task}</li>`).join('')}
+                    ${dayPlan.tasks.map(task => `<li>${task}</li>`).join('')}
                   </ul>
                 </div>
               ` : '<p style="color:#64748b; font-style:italic;">План не задан</p>'}
@@ -126,10 +155,23 @@
                   <div class="event">
                     <div class="event-header">
                       <span class="event-author">${e.author}</span>
-                      <span class="event-time">${new Date(e.created_at).toLocaleTimeString()}</span>
+                      <span class="event-time">${formatDateTime(e.created_at)}</span>
                     </div>
                     <div class="event-content">
                       <strong>${getEventTypeText(e.type)}:</strong> ${e.content}
+                      ${e.is_approved ? '<span class="event-badge approved">Согласовано</span>' : '<span class="event-badge not-approved">Не согласовано</span>'}
+                      
+                      ${e.file_metadata ? `
+                        <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: 8px;">
+                          <strong>📎 Прикреплённый файл:</strong><br>
+                          <a href="${e.file_metadata.url}" target="_blank" style="color: #2563eb; text-decoration: underline;">
+                            ${e.file_metadata.name}
+                          </a>
+                          <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                            ${formatFileSize(e.file_metadata.size)} • ${e.file_metadata.type}
+                          </div>
+                        </div>
+                      ` : ''}
                     </div>
                   </div>
                 `).join('')}
@@ -155,9 +197,15 @@
       container.innerHTML = daysHTML.join('');
     }
 
+    // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
     function formatDate(dateStr) {
       const d = new Date(dateStr);
-      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+    }
+
+    function formatDateTime(dateTimeStr) {
+      const d = new Date(dateTimeStr);
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     }
 
     function getDayName(dateStr) {
@@ -172,12 +220,73 @@
         note: 'Заметка',
         meeting: 'Встреча',
         comment: 'Комментарий',
-        scheme: 'Схема'
+        scheme: 'Схема',
+        document: 'Документ'
       };
       return types[type] || type;
     }
 
-    // Глобальные функции
+    function getEventIcon(type) {
+      const icons = {
+        task: '✅',
+        interview: '🎤',
+        note: '📝',
+        meeting: '📅',
+        comment: '💬',
+        scheme: '📊',
+        document: '📎'
+      };
+      return icons[type] || '📄';
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Б';
+      const k = 1024;
+      const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // === API ФУНКЦИИ ===
+    async function loadWeeks() {
+      const { data, error } = await supabase
+        .from('weeks')
+        .select('*')
+        .order('start_date', { ascending: true });
+      if (error) {
+        console.error('Ошибка загрузки недель:', error);
+        document.getElementById('weeks-container').innerHTML = `<p style="color:red;">Ошибка: ${error.message}</p>`;
+        return [];
+      }
+      return data;
+    }
+
+    async function loadEvents(weekId) {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('week_id', weekId)
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.error('Ошибка загрузки событий:', error);
+        return [];
+      }
+      return data;
+    }
+
+    async function createEvent(eventData) {
+      const { data, error } = await supabase
+        .from('events')
+        .insert([eventData])
+        .select();
+      if (error) {
+        console.error('Ошибка создания события:', error);
+        throw error;
+      }
+      return data[0];
+    }
+
+    // === ГЛОБАЛЬНЫЕ ФУНКЦИИ ===
     window.toggleWeek = async (weekId) => {
       const el = document.getElementById(`days-${weekId}`);
       const title = document.querySelector(`.week-title[onclick="toggleWeek(${weekId})"]`);
@@ -200,48 +309,46 @@
       }
     };
 
-    window.addMeeting = (weekId, dateStr) => {
-      const content = prompt('Повестка встречи:');
-      if (content) addEvent(weekId, dateStr, 'meeting', content);
-    };
-
     window.handleComment = async (e, weekId, dateStr) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         const textarea = e.target;
         const content = textarea.value.trim();
         if (content) {
-          await addEvent(weekId, dateStr, 'comment', content);
+          await createEvent({
+            week_id: weekId,
+            day_date: dateStr,
+            type: 'comment',
+            author: 'Руководитель',
+            content
+          });
           textarea.value = '';
+          // Перезагружаем интерфейс
+          init();
         }
       }
     };
 
-    async function addEvent(weekId, dateStr, type, content) {
-      try {
-        await createEvent({ week_id: weekId, day_date: dateStr, type, author: 'Руководитель', content });
-        
-        const events = await loadEvents(weekId);
-        const weeks = await loadWeeks();
-        const week = weeks.find(w => w.id === weekId);
-        if (week) {
-          renderDays(weekId, week, events);
-        }
-        
-        showNotification('Сообщение отправлено!');
-      } catch (error) {
-        alert('Ошибка: ' + error.message);
+    window.addMeeting = (weekId, dateStr) => {
+      const content = prompt('Повестка встречи:');
+      if (content) {
+        createEvent({
+          week_id: weekId,
+          day_date: dateStr,
+          type: 'meeting',
+          author: 'Руководитель',
+          content
+        }).then(() => init());
       }
-    }
+    };
 
-    // Инициализация
+    // === ИНИЦИАЛИЗАЦИЯ ===
     async function init() {
       try {
         const weeks = await loadWeeks();
         renderWeeks(weeks);
       } catch (error) {
-        document.getElementById('weeks-container').innerHTML = 
-          `<div class="card" style="color:red;">Ошибка загрузки данных: ${error.message}</div>`;
+        document.getElementById('weeks-container').innerHTML = `<p style="color:red;">Ошибка: ${error.message}</p>`;
       }
     }
 
