@@ -581,7 +581,7 @@ C --> D[Возврат]`;
       if (tasks.length === 0) {
         addTaskField();
       }
-    }
+    };
 
     window.addTaskField = function(task = '') {
       const container = document.getElementById('day-tasks-container');
@@ -660,7 +660,7 @@ C --> D[Возврат]`;
           type,
           author: 'Климов Е.А.',
           content,
-          file_metadata: fileMetadata,
+          file_meta fileMetadata, // Исправлено!
           is_approved: false
         });
         
@@ -779,37 +779,6 @@ C --> D[Возврат]`;
     });
 
     // === ИНИЦИАЛИЗАЦИЯ ===
-    async function initApp() {
-      try {
-        const weeks = await loadWeeks();
-        renderWeeks(weeks, currentUser);
-      } catch (error) {
-        document.getElementById('weeks-container').innerHTML = 
-          `<div class="card" style="color:red;">Ошибка загрузки данных: ${error.message}</div>`;
-      }
-    }
-
-    async function init() {
-      const userFromHash = await handleAuthHash();
-      if (userFromHash) {
-        currentUser = userFromHash;
-        showMainApp(currentUser);
-        initApp();
-        return;
-      }
-
-      const existingUser = await checkSession();
-      if (existingUser) {
-        currentUser = existingUser;
-        showMainApp(currentUser);
-        initApp();
-        return;
-      }
-
-      showAuthScreen();
-    }
-
-    // Обработчики
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('google-login')?.addEventListener('click', signInWithGoogle);
       
@@ -829,50 +798,72 @@ C --> D[Возврат]`;
         }
       });
       
-      init();
-    });
-
-    // Глобальные функции
-    window.closeModal = closeModal;
-    window.openModal = openModal;
-    window.saveWeek = saveWeek;
-    window.saveDayPlan = saveDayPlan;
-    window.addTaskField = addTaskField;
-    window.logout = async () => {
-      await signOut();
-      currentUser = null;
-      showAuthScreen();
-    };
-    window.handleComment = async (e, weekId, dateStr) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        const textarea = e.target;
-        const content = textarea.value.trim();
+      // Глобальные функции (обязательно ДО init!)
+      window.closeModal = closeModal;
+      window.openModal = openModal;
+      window.saveWeek = saveWeek;
+      window.saveDayPlan = saveDayPlan;
+      window.addTaskField = addTaskField;
+      window.saveEvent = saveEvent; // Добавлено!
+      window.logout = async () => {
+        await signOut();
+        currentUser = null;
+        showAuthScreen();
+      };
+      window.handleComment = async (e, weekId, dateStr) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          const textarea = e.target;
+          const content = textarea.value.trim();
+          if (content) {
+            await createEvent({ 
+              week_id: weekId, 
+              day_date: dateStr, 
+              type: 'comment', 
+              author: 'Руководитель', 
+              content 
+            });
+            textarea.value = '';
+            initApp();
+          }
+        }
+      };
+      window.addMeeting = (weekId, dateStr) => {
+        const content = prompt('Повестка встречи:');
         if (content) {
-          await createEvent({ 
+          createEvent({ 
             week_id: weekId, 
             day_date: dateStr, 
-            type: 'comment', 
+            type: 'meeting', 
             author: 'Руководитель', 
             content 
-          });
-          textarea.value = '';
-          initApp();
+          }).then(() => initApp());
         }
+      };
+      
+      // Инициализация ТОЛЬКО после загрузки DOM
+      async function init() {
+        const userFromHash = await handleAuthHash();
+        if (userFromHash) {
+          currentUser = userFromHash;
+          showMainApp(currentUser);
+          initApp();
+          return;
+        }
+
+        const existingUser = await checkSession();
+        if (existingUser) {
+          currentUser = existingUser;
+          showMainApp(currentUser);
+          initApp();
+          return;
+        }
+
+        showAuthScreen();
       }
-    };
-    window.addMeeting = (weekId, dateStr) => {
-      const content = prompt('Повестка встречи:');
-      if (content) {
-        createEvent({ 
-          week_id: weekId, 
-          day_date: dateStr, 
-          type: 'meeting', 
-          author: 'Руководитель', 
-          content 
-        }).then(() => initApp());
-      }
-    };
+      
+      init();
+    });
   </script>
 </body>
 </html>
