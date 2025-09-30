@@ -56,12 +56,12 @@
     <div class="notification" id="notification"></div>
   </div>
 
-  <!-- Модальное окно создания недели -->
-  <div id="week-modal" class="modal hidden">
-    <div class="modal-content">
+  <!-- Скрытая форма создания недели -->
+  <div id="week-form" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;">
+    <div class="modal-content" style="width:90%; max-width:600px;">
       <div class="modal-header">
         <h2 class="modal-title">Создать неделю</h2>
-        <button class="close-modal" onclick="closeModal('week-modal')">&times;</button>
+        <button class="close-modal" onclick="closeWeekForm()">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-row">
@@ -85,12 +85,12 @@
     </div>
   </div>
 
-  <!-- Модальное окно плана дня -->
-  <div id="day-plan-modal" class="modal hidden">
-    <div class="modal-content">
+  <!-- Скрытая форма плана дня -->
+  <div id="day-plan-form" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;">
+    <div class="modal-content" style="width:90%; max-width:600px;">
       <div class="modal-header">
         <h2 class="modal-title">План на <span id="plan-date"></span></h2>
-        <button class="close-modal" onclick="closeModal('day-plan-modal')">&times;</button>
+        <button class="close-modal" onclick="closeDayPlanForm()">&times;</button>
       </div>
       <div class="modal-body">
         <div id="day-tasks-container"></div>
@@ -100,12 +100,12 @@
     </div>
   </div>
 
-  <!-- Модальное окно события -->
-  <div id="event-modal" class="modal hidden">
-    <div class="modal-content">
+  <!-- Скрытая форма события -->
+  <div id="event-form" class="hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000;">
+    <div class="modal-content" style="width:90%; max-width:600px;">
       <div class="modal-header">
         <h2 class="modal-title">Новое событие</h2>
-        <button class="close-modal" onclick="closeModal('event-modal')">&times;</button>
+        <button class="close-modal" onclick="closeEventForm()">&times;</button>
       </div>
       <div class="modal-body">
         <div class="form-row">
@@ -167,52 +167,47 @@ C --> D[Возврат]</textarea>
     let currentWeekId = null;
     let currentDayDate = null;
 
-    // === ФУНКЦИИ МОДАЛЬНЫХ ОКОН ===
-    function openModal(modalId) {
-      document.getElementById(modalId).classList.remove('hidden');
+    // === ФУНКЦИИ ФОРМ ===
+    function openWeekForm() {
+      document.getElementById('week-form').classList.remove('hidden');
     }
 
-    function closeModal(modalId) {
-      document.getElementById(modalId).classList.add('hidden');
-      if (modalId === 'week-modal') {
-        document.getElementById('week-title').value = '';
-        document.getElementById('week-description').value = '';
-        document.getElementById('week-start').value = '';
-        document.getElementById('week-end').value = '';
-        delete document.getElementById('week-modal').dataset.weekId;
-      } else if (modalId === 'day-plan-modal') {
-        document.getElementById('day-tasks-container').innerHTML = '';
-      } else if (modalId === 'event-modal') {
-        document.getElementById('event-type').value = 'task';
-        document.getElementById('event-content').value = '';
-        document.getElementById('file-preview').innerHTML = '';
-        document.getElementById('scheme-code').value = `graph LR
+    function closeWeekForm() {
+      document.getElementById('week-form').classList.add('hidden');
+      document.getElementById('week-title').value = '';
+      document.getElementById('week-description').value = '';
+      document.getElementById('week-start').value = '';
+      document.getElementById('week-end').value = '';
+      delete document.getElementById('week-form').dataset.weekId;
+    }
+
+    function openDayPlanForm() {
+      document.getElementById('day-plan-form').classList.remove('hidden');
+    }
+
+    function closeDayPlanForm() {
+      document.getElementById('day-plan-form').classList.add('hidden');
+      document.getElementById('day-tasks-container').innerHTML = '';
+    }
+
+    function openEventForm() {
+      document.getElementById('event-form').classList.remove('hidden');
+    }
+
+    function closeEventForm() {
+      document.getElementById('event-form').classList.add('hidden');
+      document.getElementById('event-type').value = 'task';
+      document.getElementById('event-content').value = '';
+      document.getElementById('file-preview').innerHTML = '';
+      document.getElementById('scheme-code').value = `graph LR
 A[Склад] --> B[Выдача]
 B --> C[Объект]
 C --> D[Возврат]`;
-        document.getElementById('event-content-field').classList.remove('hidden');
-        document.getElementById('scheme-editor').classList.add('hidden');
-        document.getElementById('file-upload').classList.add('hidden');
-        document.getElementById('file-input').value = '';
-      }
+      document.getElementById('event-content-field').classList.remove('hidden');
+      document.getElementById('scheme-editor').classList.add('hidden');
+      document.getElementById('file-upload').classList.add('hidden');
+      document.getElementById('file-input').value = '';
     }
-
-    // Закрытие по клику на фон
-    document.addEventListener('click', (e) => {
-      if (e.target.classList.contains('modal')) {
-        const modalId = e.target.id;
-        closeModal(modalId);
-      }
-    });
-
-    // Закрытие по Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        document.querySelectorAll('.modal:not(.hidden)').forEach(modal => {
-          closeModal(modal.id);
-        });
-      }
-    });
 
     // === UI ФУНКЦИИ ===
     function showAuthScreen() {
@@ -503,7 +498,7 @@ C --> D[Возврат]`;
     };
 
     window.createWeek = function() {
-      openModal('week-modal');
+      openWeekForm();
     };
 
     window.editWeek = async (weekId) => {
@@ -516,8 +511,8 @@ C --> D[Возврат]`;
       document.getElementById('week-start').value = formatDate(week.start_date);
       document.getElementById('week-end').value = formatDate(week.end_date);
       
-      document.getElementById('week-modal').dataset.weekId = weekId;
-      openModal('week-modal');
+      document.getElementById('week-form').dataset.weekId = weekId;
+      openWeekForm();
     };
 
     window.saveWeek = async function() {
@@ -535,7 +530,7 @@ C --> D[Возврат]`;
       }
       
       try {
-        const weekId = document.getElementById('week-modal').dataset.weekId;
+        const weekId = document.getElementById('week-form').dataset.weekId;
         if (weekId) {
           await updateWeek(parseInt(weekId), { 
             title, 
@@ -552,7 +547,7 @@ C --> D[Возврат]`;
             plan: {}
           });
         }
-        closeModal('week-modal');
+        closeWeekForm();
         initApp();
       } catch (error) {
         alert('Ошибка: ' + error.message);
@@ -568,7 +563,7 @@ C --> D[Возврат]`;
         const week = weeks.find(w => w.id === weekId);
         const tasks = week?.plan?.[dateStr]?.tasks || [];
         renderTaskFields(tasks);
-        openModal('day-plan-modal');
+        openDayPlanForm();
       });
     };
 
@@ -614,14 +609,14 @@ C --> D[Возврат]`;
       };
       
       await updateWeek(currentWeekId, { plan: updatedPlan });
-      closeModal('day-plan-modal');
+      closeDayPlanForm();
       initApp();
     };
 
     window.openEventModal = function(weekId, dateStr) {
       currentWeekId = weekId;
       currentDayDate = dateStr;
-      openModal('event-modal');
+      openEventForm();
     };
 
     window.saveEvent = async function() {
@@ -662,11 +657,11 @@ C --> D[Возврат]`;
           type,
           author: 'Климов Е.А.',
           content,
-          file_meta fileMetadata,
+          file_metadata: fileMetadata,
           is_approved: false
         });
         
-        closeModal('event-modal');
+        closeEventForm();
         initApp();
       } catch (error) {
         alert('Ошибка: ' + error.message);
@@ -801,8 +796,9 @@ C --> D[Возврат]`;
       });
       
       // Глобальные функции
-      window.closeModal = closeModal;
-      window.openModal = openModal;
+      window.closeWeekForm = closeWeekForm;
+      window.closeDayPlanForm = closeDayPlanForm;
+      window.closeEventForm = closeEventForm;
       window.saveWeek = saveWeek;
       window.saveDayPlan = saveDayPlan;
       window.addTaskField = addTaskField;
