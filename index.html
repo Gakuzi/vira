@@ -5,19 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CRM для аудита склада</title>
   <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 </head>
 <body>
   <header>
     <h1>CRM для аудита склада — Октябрь 2025</h1>
-    <div class="subtitle">Подключено к Supabase</div>
+    <div class="subtitle">Панель руководителя</div>
   </header>
 
   <div class="main-content">
+    <div class="user-info">
+      <div>Режим: <strong>Руководитель</strong></div>
+      <div>Вы можете просматривать план, комментировать и назначать встречи</div>
+      <div style="margin-top:10px; font-size:12px; color:#666;">
+        <a href="auditor.html" style="color:#444;">Вход для аудитора</a>
+      </div>
+    </div>
+
     <div id="weeks-container">
-      <p>Загрузка данных из Supabase...</p>
+      <p>Загрузка данных...</p>
     </div>
   </div>
 
-  <script type="module" src="js/main.js"></script>
+  <div id="notification"></div>
+
+  <footer>
+    CRM для аудита склада | GitHub Pages + Supabase
+  </footer>
+
+  <script type="module">
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
+    import { loadWeeks, loadEvents } from './js/db.js';
+    import { renderWeeks, renderDays } from './js/ui.js';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function init() {
+      try {
+        const weeks = await loadWeeks();
+        renderWeeks(weeks, { email: 'owner@example.com' });
+      } catch (error) {
+        document.getElementById('weeks-container').innerHTML = 
+          `<p style="color:red;">Ошибка: ${error.message}</p>`;
+      }
+    }
+
+    // UI функции для руководителя
+    window.toggleWeek = async (weekId) => {
+      const el = document.getElementById(`days-${weekId}`);
+      el.style.display = el.style.display === 'grid' ? 'none' : 'grid';
+      
+      if (!el.innerHTML.trim()) {
+        const events = await loadEvents(weekId);
+        renderDays(weekId, events);
+      }
+    };
+
+    window.handleComment = async (e, weekId, dateStr) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const textarea = e.target;
+        const content = textarea.value.trim();
+        if (content) {
+          // Здесь можно добавить вызов createEvent
+          textarea.value = '';
+          alert('Комментарий добавлен (в демо-режиме)');
+        }
+      }
+    };
+
+    init();
+  </script>
 </body>
 </html>
