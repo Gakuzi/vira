@@ -101,238 +101,581 @@ C --> D[Возврат]</textarea>
     </div>
   </div>
 
-  <script type="module">
-    // ... импорты ...
-    import { MediaRecorderHelper } from './js/media.js';
+ <script type="module">
+  import { 
+    handleAuthHash, 
+    checkSession, 
+    signInWithGoogle, 
+    signInWithEmail, 
+    signOut,
+    supabase 
+  } from './js/auth.js';
+  import { loadWeeks, loadEvents, createWeek, createEvent, updateWeek } from './js/db.js';
+  import { SUPABASE_URL, AUDITOR_EMAIL } from './js/config.js';
+  import { MediaRecorderHelper } from './js/media.js';
 
-    let currentWeekId = null;
-    let currentDayDate = null;
-    let mediaHelper = null;
-    let isRecording = false;
+  let currentUser = null;
+  let currentWeekId = null;
+  let currentDayDate = null;
+  let mediaHelper = null;
+  let isRecording = false;
 
-    // Обработка выбора типа события
-    document.getElementById('event-type')?.addEventListener('change', function() {
-      const type = this.value;
-      const contentField = document.getElementById('event-content-field');
-      const mediaControls = document.getElementById('media-controls');
-      const schemeEditor = document.getElementById('scheme-editor');
-      
-      contentField.classList.toggle('hidden', ['audio', 'video'].includes(type));
-      mediaControls.classList.toggle('hidden', !['audio', 'video'].includes(type));
-      schemeEditor.classList.toggle('hidden', type !== 'scheme');
-      
-      if (type === 'scheme') {
-        renderSchemePreview();
-      }
-    });
+  // === ФУНКЦИИ МОДАЛЬНЫХ ОКОН ===
+  function openModal(modalId) {
+    document.getElementById(modalId).classList.remove('hidden');
+  }
 
-    // Запись аудио/видео
-    document.getElementById('start-recording')?.addEventListener('click', async function() {
-      const type = document.getElementById('event-type').value;
-      mediaHelper = new MediaRecorderHelper();
-      const success = await mediaHelper.startRecording(type);
-      
-      if (success) {
-        isRecording = true;
-        this.classList.add('hidden');
-        document.getElementById('stop-recording').classList.remove('hidden');
-      }
-    });
-
-    document.getElementById('stop-recording')?.addEventListener('click', function() {
+  function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+    // Очистка форм при закрытии
+    if (modalId === 'week-modal') {
+      document.getElementById('week-title').value = '';
+      document.getElementById('week-description').value = '';
+      document.getElementById('week-start').value = '';
+      document.getElementById('week-end').value = '';
+    } else if (modalId === 'day-plan-modal') {
+      document.getElementById('day-tasks-container').innerHTML = '';
+    } else if (modalId === 'event-modal') {
+      document.getElementById('event-type').value = 'task';
+      document.getElementById('event-content').value = '';
+      document.getElementById('media-preview').innerHTML = '';
+      document.getElementById('scheme-code').value = `graph LR
+A[Склад] --> B[Выдача]
+B --> C[Объект]
+C --> D[Возврат]`;
+      document.getElementById('event-content-field').classList.remove('hidden');
+      document.getElementById('media-controls').classList.add('hidden');
+      document.getElementById('scheme-editor').classList.add('hidden');
       if (isRecording && mediaHelper) {
-        const blob = mediaHelper.stopRecording();
-        const player = mediaHelper.createPlayer(blob, document.getElementById('event-type').value);
-        document.getElementById('media-preview').innerHTML = '';
-        document.getElementById('media-preview').appendChild(player);
-        
+        mediaHelper.stopRecording();
         isRecording = false;
-        this.classList.add('hidden');
-        document.getElementById('start-recording').classList.remove('hidden');
+      }
+    }
+  }
+
+  // Закрытие по клику вне модального окна
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+      const modalId = e.target.id;
+      closeModal(modalId);
+    }
+  });
+
+  // Закрытие по нажатию Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal:not(.hidden)').forEach(modal => {
+        closeModal(modal.id);
+      });
+    }
+  });
+
+  // === UI ФУНКЦИИ ===
+  function showAuthScreen() {
+    document.getElementById('auth-screen').classList.remove('hidden');
+    document.getElementById('main-app').classList.add('hidden');
+  }
+
+  function showMainApp(user) {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    
+    if (user) {
+      document.getElementById('user-email').textContent = user.email;
+      const isAuditor = user.email.toLowerCase() === AUDITOR_EMAIL.toLowerCase();
+      document.getElementById('user-role').textContent = 
+        isAuditor ? 'Аудитор (полный доступ)' : 'Руководитель (наблюдатель)';
+    }
+  }
+
+  function showNotification(message) {
+    const notif = document.getElementById('notification');
+    if (notif) {
+      notif.textContent = message;
+      notif.style.display = 'block';
+      setTimeout(() => notif.style.display = 'none', 5000);
+    }
+  }
+
+  function isAuditor(user) {
+    return user && user.email?.toLowerCase() === AUDITOR_EMAIL.toLowerCase();
+  }
+
+  // === РЕНДЕРИНГ ===
+  async function renderWeeks(weeks, user) {
+    const container = document.getElementById('weeks-container');
+    if (!container) return;
+    
+    container.innerHTML = weeks.map(week => `
+      <div class="card">
+        <div class="week-header">
+          <div class="week-title" onclick="toggleWeek(${week.id})">
+            📅 ${week.title} (${formatDate(week.start_date)} – ${formatDate(week.end_date)})
+          </div>
+          <div class="week-meta">
+            <span class="status-badge status-${week.status}">${getStatusText(week.status)}</span>
+            ${isAuditor(user) ? `
+              <button class="btn btn-outline" onclick="editWeek(${week.id})">✏️</button>
+              ${week.status === 'draft' || week.status === 'pending_approval' ? 
+                `<button class="btn btn-success" onclick="submitForApproval(${week.id})">📤 На согласование</button>` : 
+                `<button class="btn btn-warning" onclick="resubmitForApproval(${week.id})">🔄 Повторно на согласование</button>`
+              }
+            ` : ''}
+          </div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${week.progress}%"></div>
+        </div>
+        
+        <!-- Последние 10 событий -->
+        <div class="recent-events">
+          <h3>Последние события</h3>
+          <div id="recent-${week.id}">Загрузка...</div>
+        </div>
+        
+        <div class="days-grid" id="days-${week.id}" style="display:none;"></div>
+      </div>
+    `).join('');
+    
+    // Загружаем последние события
+    weeks.forEach(async (week) => {
+      const events = await loadEvents(week.id);
+      const recentEvents = events.slice(-10).reverse();
+      const recentContainer = document.getElementById(`recent-${week.id}`);
+      if (recentContainer) {
+        recentContainer.innerHTML = recentEvents.length ? 
+          recentEvents.map(e => `
+            <div class="mini-event">
+              <div class="mini-event-icon">${getEventIcon(e.type)}</div>
+              <div class="mini-event-content">
+                <strong>${e.author}</strong>: ${e.content?.substring(0, 80)}${e.content?.length > 80 ? '...' : ''}
+                <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                  ${formatDateTime(e.created_at)}
+                </div>
+              </div>
+            </div>
+          `).join('') : '<p style="color:#64748b;">Нет событий</p>';
       }
     });
-
-    // Рендеринг схемы
-    function renderSchemePreview() {
-      const code = document.getElementById('scheme-code').value;
-      const preview = document.getElementById('scheme-preview');
-      preview.innerHTML = `<pre class="mermaid">${code}</pre>`;
-      mermaid.run({ querySelector: '.mermaid' });
+    
+    if (isAuditor(user)) {
+      container.innerHTML += `<button class="btn btn-primary" onclick="createWeek()">➕ Создать неделю</button>`;
     }
+  }
 
-    document.getElementById('scheme-code')?.addEventListener('input', debounce(renderSchemePreview, 500));
-
-    // Создание недели
-    window.createWeek = function() {
-      document.getElementById('week-modal').classList.remove('hidden');
+  function getStatusText(status) {
+    const texts = {
+      draft: 'Черновик',
+      pending_approval: 'На согласовании',
+      approved: 'Согласовано',
+      in_progress: 'В работе',
+      completed: 'Завершено'
     };
+    return texts[status] || status;
+  }
 
-    window.saveWeek = async function() {
-      const title = document.getElementById('week-title').value;
-      const description = document.getElementById('week-description').value;
-      const startStr = document.getElementById('week-start').value;
-      const endStr = document.getElementById('week-end').value;
-      
-      // Преобразуем ДД.ММ.ГГГГ в ГГГГ-ММ-ДД
-      const start = parseRussianDate(startStr);
-      const end = parseRussianDate(endStr);
-      
-      if (!title || !start || !end) {
-        alert('Заполните все поля');
-        return;
+  async function renderDays(weekId, week, events) {
+    const container = document.getElementById(`days-${weekId}`);
+    if (!container) return;
+    
+    const daysMap = {};
+    events.forEach(e => {
+      if (!daysMap[e.day_date]) daysMap[e.day_date] = [];
+      daysMap[e.day_date].push(e);
+    });
+    
+    const start = new Date(week.start_date);
+    const end = new Date(week.end_date);
+    let current = new Date(start);
+    const daysHTML = [];
+    
+    while (current <= end) {
+      const day = current.getDay();
+      if (day !== 0 && day !== 6) {
+        const dateStr = current.toISOString().split('T')[0];
+        const dayPlan = week.plan?.[dateStr] || { tasks: [], approved: false };
+        
+        daysHTML.push(`
+          <div class="day-card">
+            <div class="day-header">
+              <div class="day-date">${formatDate(dateStr)} (${getDayName(dateStr)})</div>
+              ${isAuditor(currentUser) ? `
+                <button class="btn btn-outline" onclick="editDayPlan(${weekId}, '${dateStr}')">✏️ План</button>
+              ` : ''}
+            </div>
+            
+            <!-- План на день -->
+            ${dayPlan.tasks.length ? `
+              <div style="margin-bottom: 16px;">
+                <strong>План ${dayPlan.approved ? '✅ Согласован' : '⏳ На согласовании'}:</strong>
+                <ul style="margin-top: 8px; padding-left: 20px;">
+                  ${dayPlan.tasks.map(task => `<li>${task}</li>`).join('')}
+                </ul>
+              </div>
+            ` : '<p style="color:#64748b; font-style:italic;">План не задан</p>'}
+            
+            <!-- События -->
+            <div id="events-${weekId}-${dateStr}">
+              ${(daysMap[dateStr] || []).map(e => `
+                <div class="event">
+                  <div class="event-header">
+                    <span class="event-author">${e.author}</span>
+                    <span class="event-time">${formatDateTime(e.created_at)}</span>
+                  </div>
+                  <div class="event-content">
+                    <strong>${getEventTypeText(e.type)}:</strong> ${e.content}
+                    ${e.is_approved ? '<span class="event-badge approved">Согласовано</span>' : '<span class="event-badge not-approved">Не согласовано</span>'}
+                  </div>
+                  <div class="event-actions">
+                    ${isAuditor(currentUser) ? `
+                      <button class="btn btn-outline" onclick="editEvent(${weekId}, '${dateStr}', '${e.id}')">✏️</button>
+                    ` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            
+            <!-- Действия -->
+            <div class="day-actions">
+              ${isAuditor(currentUser) ? `
+                <button class="btn btn-outline" onclick="openEventModal(${weekId}, '${dateStr}')">➕ Событие</button>
+              ` : ''}
+              <button class="btn btn-warning" onclick="addMeeting(${weekId}, '${dateStr}')">📅 Встреча</button>
+            </div>
+            
+            <!-- Комментарии -->
+            <div class="comment-form">
+              <div class="form-group">
+                <label>Комментарий / Вопрос:</label>
+                <textarea class="form-control" placeholder="Напишите ваш комментарий..." 
+                  onkeypress="handleComment(event, ${weekId}, '${dateStr}')"></textarea>
+              </div>
+            </div>
+          </div>
+        `);
       }
+      current.setDate(current.getDate() + 1);
+    }
+    
+    container.innerHTML = daysHTML.join('');
+  }
+
+  // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+  function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+  }
+
+  function formatDateTime(dateTimeStr) {
+    const d = new Date(dateTimeStr);
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
+
+  function getDayName(dateStr) {
+    const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+    return names[new Date(dateStr).getDay()];
+  }
+
+  function getEventTypeText(type) {
+    const types = {
+      task: 'Задача',
+      interview: 'Интервью',
+      note: 'Заметка',
+      meeting: 'Встреча',
+      comment: 'Комментарий',
+      scheme: 'Схема',
+      audio: 'Аудио',
+      video: 'Видео'
+    };
+    return types[type] || type;
+  }
+
+  function getEventIcon(type) {
+    const icons = {
+      task: '✅',
+      interview: '🎤',
+      note: '📝',
+      meeting: '📅',
+      comment: '💬',
+      scheme: '📊',
+      audio: '🎙️',
+      video: '🎥'
+    };
+    return icons[type] || '📄';
+  }
+
+  // === ГЛОБАЛЬНЫЕ ФУНКЦИИ ===
+  window.toggleWeek = async (weekId) => {
+    const el = document.getElementById(`days-${weekId}`);
+    const title = document.querySelector(`.week-title[onclick="toggleWeek(${weekId})"]`);
+    
+    if (el.style.display === 'grid') {
+      el.style.display = 'none';
+      title.classList.add('collapsed');
+    } else {
+      el.style.display = 'grid';
+      title.classList.remove('collapsed');
       
-      try {
-        await createWeek({
-          title,
+      if (!el.innerHTML.trim()) {
+        const weeks = await loadWeeks();
+        const week = weeks.find(w => w.id === weekId);
+        if (week) {
+          const events = await loadEvents(weekId);
+          renderDays(weekId, week, events);
+        }
+      }
+    }
+  };
+
+  window.createWeek = function() {
+    openModal('week-modal');
+  };
+
+  window.editWeek = async (weekId) => {
+    const weeks = await loadWeeks();
+    const week = weeks.find(w => w.id === weekId);
+    if (!week) return;
+    
+    document.getElementById('week-title').value = week.title;
+    document.getElementById('week-description').value = week.description || '';
+    document.getElementById('week-start').value = formatDate(week.start_date);
+    document.getElementById('week-end').value = formatDate(week.end_date);
+    
+    // Сохраняем ID для обновления
+    document.getElementById('week-modal').dataset.weekId = weekId;
+    openModal('week-modal');
+  };
+
+  window.saveWeek = async function() {
+    const title = document.getElementById('week-title').value;
+    const description = document.getElementById('week-description').value;
+    const startStr = document.getElementById('week-start').value;
+    const endStr = document.getElementById('week-end').value;
+    
+    const start = parseRussianDate(startStr);
+    const end = parseRussianDate(endStr);
+    
+    if (!title || !start || !end) {
+      alert('Заполните все поля');
+      return;
+    }
+    
+    try {
+      const weekId = document.getElementById('week-modal').dataset.weekId;
+      if (weekId) {
+        // Обновление существующей недели
+        await updateWeek(parseInt(weekId), { 
+          title, 
           description,
-          start_date: start,
+          start_date: start, 
+          end_date: end 
+        });
+        delete document.getElementById('week-modal').dataset.weekId;
+      } else {
+        // Создание новой недели
+        await createWeek({ 
+          title, 
+          description,
+          start_date: start, 
           end_date: end,
           plan: {}
         });
-        closeModal('week-modal');
-        initApp();
-      } catch (error) {
-        alert('Ошибка: ' + error.message);
       }
-    };
-
-    // План дня
-    window.editDayPlan = function(weekId, dateStr) {
-      currentWeekId = weekId;
-      currentDayDate = dateStr;
-      document.getElementById('plan-date').textContent = formatDate(dateStr);
-      
-      // Загружаем текущие задачи
-      loadWeeks().then(weeks => {
-        const week = weeks.find(w => w.id === weekId);
-        const tasks = week?.plan?.[dateStr]?.tasks || [];
-        renderTaskFields(tasks);
-        document.getElementById('day-plan-modal').classList.remove('hidden');
-      });
-    };
-
-    function renderTaskFields(tasks) {
-      const container = document.getElementById('day-tasks-container');
-      container.innerHTML = '';
-      
-      tasks.forEach((task, index) => {
-        addTaskField(task);
-      });
-      
-      if (tasks.length === 0) {
-        addTaskField();
-      }
-    }
-
-    window.addTaskField = function(task = '') {
-      const container = document.getElementById('day-tasks-container');
-      const index = container.children.length;
-      const div = document.createElement('div');
-      div.className = 'form-row';
-      div.innerHTML = `
-        <label>Задача ${index + 1}</label>
-        <input type="text" class="form-control task-input" value="${task}" placeholder="Описание задачи">
-      `;
-      container.appendChild(div);
-    };
-
-    window.saveDayPlan = async function() {
-      const inputs = document.querySelectorAll('.task-input');
-      const tasks = Array.from(inputs)
-        .map(input => input.value.trim())
-        .filter(task => task);
-      
-      const weeks = await loadWeeks();
-      const week = weeks.find(w => w.id === currentWeekId);
-      if (!week) return;
-      
-      const updatedPlan = { ...(week.plan || {}) };
-      updatedPlan[currentDayDate] = {
-        tasks: tasks,
-        approved: false // Новый план требует согласования
-      };
-      
-      await updateWeek(currentWeekId, { plan: updatedPlan });
-      closeModal('day-plan-modal');
+      closeModal('week-modal');
       initApp();
-    };
+    } catch (error) {
+      alert('Ошибка: ' + error.message);
+    }
+  };
 
-    // События
-    window.openEventModal = function(weekId, dateStr) {
-      currentWeekId = weekId;
-      currentDayDate = dateStr;
-      document.getElementById('event-modal').classList.remove('hidden');
-    };
+  window.editDayPlan = function(weekId, dateStr) {
+    currentWeekId = weekId;
+    currentDayDate = dateStr;
+    document.getElementById('plan-date').textContent = formatDate(dateStr);
+    
+    loadWeeks().then(weeks => {
+      const week = weeks.find(w => w.id === weekId);
+      const tasks = week?.plan?.[dateStr]?.tasks || [];
+      renderTaskFields(tasks);
+      openModal('day-plan-modal');
+    });
+  };
 
-    window.saveEvent = async function() {
-      const type = document.getElementById('event-type').value;
-      let content = '';
-      let fileUrls = [];
+  function renderTaskFields(tasks) {
+    const container = document.getElementById('day-tasks-container');
+    container.innerHTML = '';
+    
+    tasks.forEach((task, index) => {
+      addTaskField(task);
+    });
+    
+    if (tasks.length === 0) {
+      addTaskField();
+    }
+  }
+
+  window.addTaskField = function(task = '') {
+    const container = document.getElementById('day-tasks-container');
+    const index = container.children.length;
+    const div = document.createElement('div');
+    div.className = 'form-row';
+    div.innerHTML = `
+      <label>Задача ${index + 1}</label>
+      <input type="text" class="form-control task-input" value="${task}" placeholder="Описание задачи">
+    `;
+    container.appendChild(div);
+  };
+
+  window.saveDayPlan = async function() {
+    const inputs = document.querySelectorAll('.task-input');
+    const tasks = Array.from(inputs)
+      .map(input => input.value.trim())
+      .filter(task => task);
+    
+    const weeks = await loadWeeks();
+    const week = weeks.find(w => w.id === currentWeekId);
+    if (!week) return;
+    
+    const updatedPlan = { ...(week.plan || {}) };
+    updatedPlan[currentDayDate] = {
+      tasks: tasks,
+      approved: false // Новый план требует согласования
+    };
+    
+    await updateWeek(currentWeekId, { plan: updatedPlan });
+    closeModal('day-plan-modal');
+    initApp();
+  };
+
+  window.openEventModal = function(weekId, dateStr) {
+    currentWeekId = weekId;
+    currentDayDate = dateStr;
+    openModal('event-modal');
+  };
+
+  window.submitForApproval = async (weekId) => {
+    if (!confirm('Отправить план на согласование руководителю?')) return;
+    
+    await updateWeek(weekId, { status: 'pending_approval' });
+    showNotification('План отправлен на согласование!');
+    initApp();
+  };
+
+  window.resubmitForApproval = async (weekId) => {
+    if (!confirm('Отправить обновлённый план на повторное согласование?')) return;
+    
+    await updateWeek(weekId, { status: 'pending_approval' });
+    showNotification('План отправлен на повторное согласование!');
+    initApp();
+  };
+
+  // === ИНИЦИАЛИЗАЦИЯ ===
+  async function initApp() {
+    try {
+      const weeks = await loadWeeks();
+      renderWeeks(weeks, currentUser);
+    } catch (error) {
+      document.getElementById('weeks-container').innerHTML = 
+        `<div class="card" style="color:red;">Ошибка загрузки данных: ${error.message}</div>`;
+    }
+  }
+
+  async function init() {
+    const userFromHash = await handleAuthHash();
+    if (userFromHash) {
+      currentUser = userFromHash;
+      showMainApp(currentUser);
+      initApp();
+      return;
+    }
+
+    const existingUser = await checkSession();
+    if (existingUser) {
+      currentUser = existingUser;
+      showMainApp(currentUser);
+      initApp();
+      return;
+    }
+
+    showAuthScreen();
+  }
+
+  // Обработчики
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('google-login')?.addEventListener('click', signInWithGoogle);
+    
+    document.getElementById('email-login')?.addEventListener('click', () => {
+      document.getElementById('email-form').classList.remove('hidden');
+    });
+    
+    document.getElementById('submit-email')?.addEventListener('click', async () => {
+      const email = document.getElementById('email-input')?.value.trim();
+      if (!email) return alert('Введите email');
       
-      if (['audio', 'video'].includes(type)) {
-        // Здесь нужно загрузить blob в Supabase Storage
-        // Для демо просто сохраняем тип
-        content = `Запись ${type}`;
-      } else if (type === 'scheme') {
-        content = document.getElementById('scheme-code').value;
-      } else {
-        content = document.getElementById('event-content').value;
-      }
-      
-      if (!content.trim()) {
-        alert('Введите содержание');
-        return;
-      }
-      
-      try {
-        await createEvent({
-          week_id: currentWeekId,
-          day_date: currentDayDate,
-          type,
-          author: 'Климов Е.А.',
-          content,
-          file_urls: fileUrls,
-          is_approved: false
-        });
-        
-        closeModal('event-modal');
-        initApp();
-      } catch (error) {
+      const error = await signInWithEmail(email);
+      if (error) {
         alert('Ошибка: ' + error.message);
+      } else {
+        alert('Проверьте email для входа');
       }
-    };
+    });
+    
+    init();
+  });
 
-    // Вспомогательные функции
-    function parseRussianDate(dateStr) {
-      const parts = dateStr.split('.');
-      if (parts.length === 3) {
-        const day = parts[0].padStart(2, '0');
-        const month = parts[1].padStart(2, '0');
-        const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
-        return `${year}-${month}-${day}`;
+  // Делаем функции глобальными для onclick
+  window.closeModal = closeModal;
+  window.openModal = openModal;
+  window.saveWeek = saveWeek;
+  window.saveDayPlan = saveDayPlan;
+  window.addTaskField = addTaskField;
+  window.logout = async () => {
+    await signOut();
+    currentUser = null;
+    showAuthScreen();
+  };
+  window.handleComment = async (e, weekId, dateStr) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const textarea = e.target;
+      const content = textarea.value.trim();
+      if (content) {
+        await createEvent({ 
+          week_id: weekId, 
+          day_date: dateStr, 
+          type: 'comment', 
+          author: 'Руководитель', 
+          content 
+        });
+        textarea.value = '';
+        initApp();
       }
-      return null;
     }
-
-    function formatDate(dateStr) {
-      const d = new Date(dateStr);
-      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+  };
+  window.addMeeting = (weekId, dateStr) => {
+    const content = prompt('Повестка встречи:');
+    if (content) {
+      createEvent({ 
+        week_id: weekId, 
+        day_date: dateStr, 
+        type: 'meeting', 
+        author: 'Руководитель', 
+        content 
+      }).then(() => initApp());
     }
+  };
 
-    function debounce(func, wait) {
-      let timeout;
-      return function executedFunction(...args) {
-        const later = () => {
-          clearTimeout(timeout);
-          func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-      };
+  // Функция парсинга даты
+  function parseRussianDate(dateStr) {
+    const parts = dateStr.split('.');
+    if (parts.length === 3) {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+      return `${year}-${month}-${day}`;
     }
-
-    // ... остальной код ...
-  </script>
+    return null;
+  }
+</script>
 </body>
 </html>
