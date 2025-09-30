@@ -5,48 +5,444 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CRM для аудита склада — Аудитор</title>
   <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>CRM для аудита склада — Октябрь 2025</h1>
-    <div class="subtitle">Панель аудитора</div>
-  </header>
-
-  <!-- Экран авторизации -->
-  <div id="auth-screen" class="auth-section">
-    <h2>Вход для аудитора</h2>
-    <button class="btn btn-google" id="google-login">
-      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Войти через Google
-    </button>
-    <button class="btn btn-email" id="email-login">Войти по Email</button>
-    
-    <div id="email-form" class="hidden" style="margin-top: 20px;">
-      <input type="email" id="email-input" placeholder="Ваш email" style="width:100%; padding:12px; margin:10px 0; border:1px solid var(--border); border-radius:8px;">
-      <button class="btn btn-email" id="submit-email">Продолжить</button>
+  <div class="container">
+    <div class="header">
+      <h1>CRM для аудита склада — Октябрь 2025</h1>
+      <div class="subtitle">Панель аудитора</div>
     </div>
+
+    <!-- Экран авторизации -->
+    <div id="auth-screen" class="auth-card">
+      <h2>Вход для аудитора</h2>
+      <button class="btn btn-google" id="google-login">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Войти через Google
+      </button>
+      <button class="btn btn-primary" id="email-login" style="margin-top: 16px;">Войти по Email</button>
+      
+      <div id="email-form" class="hidden" style="margin-top: 24px;">
+        <input type="email" id="email-input" class="form-control" placeholder="Ваш email">
+        <button class="btn btn-primary" id="submit-email" style="margin-top: 12px; width: 100%;">Продолжить</button>
+      </div>
+    </div>
+
+    <!-- Основной интерфейс -->
+    <div id="main-app" class="hidden">
+      <div class="user-info">
+        <p>Вы вошли как: <strong id="user-email"></strong></p>
+        <p>Роль: <span id="user-role"></span></p>
+        <button class="btn btn-danger" onclick="logout()">Выйти</button>
+      </div>
+
+      <div class="card">
+        <button class="btn btn-primary" onclick="createNewWeek()">➕ Создать новую неделю</button>
+      </div>
+
+      <div id="weeks-container"></div>
+    </div>
+
+    <div class="notification" id="notification"></div>
   </div>
 
-  <!-- Основной интерфейс -->
-  <div id="main-app" class="hidden main-content">
-    <div class="user-info">
-      <div>Вы вошли как: <strong id="user-email"></strong></div>
-      <div>Роль: <span id="user-role"></span></div>
-      <button onclick="logout()" style="margin-top:10px; padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:6px;">Выйти</button>
-    </div>
-
-    <div id="weeks-container">
-      <p>Загрузка данных...</p>
-    </div>
-  </div>
-
-  <div id="notification"></div>
-
-  <footer>
+  <div class="footer">
     CRM для аудита склада | Аудитор
-  </footer>
+  </div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module">
+    import { 
+      handleAuthHash, 
+      checkSession, 
+      signInWithGoogle, 
+      signInWithEmail, 
+      signOut,
+      supabase 
+    } from './js/auth.js';
+    import { loadWeeks, loadEvents, createWeek, createEvent, updateWeek } from './js/db.js';
+    import { SUPABASE_URL, AUDITOR_EMAIL } from './js/config.js';
+
+    let currentUser = null;
+
+    // UI функции
+    function showAuthScreen() {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('main-app').classList.add('hidden');
+    }
+
+    function showMainApp(user) {
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('main-app').classList.remove('hidden');
+      
+      if (user) {
+        document.getElementById('user-email').textContent = user.email;
+        const isAuditor = user.email.toLowerCase() === AUDITOR_EMAIL.toLowerCase();
+        document.getElementById('user-role').textContent = 
+          isAuditor ? 'Аудитор (полный доступ)' : 'Руководитель (наблюдатель)';
+      }
+    }
+
+    function showNotification(message) {
+      const notif = document.getElementById('notification');
+      if (notif) {
+        notif.textContent = message;
+        notif.style.display = 'block';
+        setTimeout(() => notif.style.display = 'none', 5000);
+      }
+    }
+
+    function isAuditor(user) {
+      return user && user.email?.toLowerCase() === AUDITOR_EMAIL.toLowerCase();
+    }
+
+    // Рендеринг недель
+    async function renderWeeks(weeks, user) {
+      const container = document.getElementById('weeks-container');
+      if (!container) return;
+      
+      container.innerHTML = weeks.map(week => `
+        <div class="card">
+          <div class="week-header">
+            <div class="week-title" onclick="toggleWeek(${week.id})">
+              📅 ${week.title} (${week.start_date} – ${week.end_date})
+            </div>
+            <div class="week-meta">
+              <span class="status-badge status-${week.status}">${getStatusText(week.status)}</span>
+              ${isAuditor(user) ? `
+                <button class="btn btn-outline" onclick="editWeek(${week.id})">✏️ Редактировать</button>
+                ${week.status === 'draft' ? 
+                  `<button class="btn btn-success" onclick="submitForApproval(${week.id})">📤 На согласование</button>` : 
+                  ''
+                }
+              ` : ''}
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${week.progress}%"></div>
+          </div>
+          <div class="days-grid" id="days-${week.id}" style="display:none;"></div>
+        </div>
+      `).join('');
+    }
+
+    function getStatusText(status) {
+      const texts = {
+        draft: 'Черновик',
+        approved: 'Согласовано',
+        in_progress: 'В работе',
+        completed: 'Завершено'
+      };
+      return texts[status] || status;
+    }
+
+    // Рендеринг дней
+    async function renderDays(weekId, week, events) {
+      const container = document.getElementById(`days-${weekId}`);
+      if (!container) return;
+      
+      // Группируем события по дням
+      const daysMap = {};
+      events.forEach(e => {
+        if (!daysMap[e.day_date]) daysMap[e.day_date] = [];
+        daysMap[e.day_date].push(e);
+      });
+      
+      // Генерируем дни
+      const start = new Date(week.start_date);
+      const end = new Date(week.end_date);
+      let current = new Date(start);
+      const daysHTML = [];
+      
+      while (current <= end) {
+        const day = current.getDay();
+        if (day !== 0 && day !== 6) {
+          const dateStr = current.toISOString().split('T')[0];
+          const plan = week.plan?.[dateStr] || [];
+          
+          daysHTML.push(`
+            <div class="day-card">
+              <div class="day-header">
+                <div class="day-date">${formatDate(dateStr)} (${getDayName(dateStr)})</div>
+                ${isAuditor(currentUser) ? `
+                  <button class="btn btn-outline" onclick="editDayPlan(${weekId}, '${dateStr}')">✏️ План</button>
+                ` : ''}
+              </div>
+              
+              <!-- План на день -->
+              ${plan.length ? `
+                <div style="margin-bottom: 16px;">
+                  <strong>План:</strong>
+                  <ul style="margin-top: 8px; padding-left: 20px;">
+                    ${plan.map(task => `<li>${task}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : '<p style="color:#64748b; font-style:italic;">План не задан</p>'}
+              
+              <!-- События -->
+              <div id="events-${weekId}-${dateStr}">
+                ${(daysMap[dateStr] || []).map(e => `
+                  <div class="event">
+                    <div class="event-header">
+                      <span class="event-author">${e.author}</span>
+                      <span class="event-time">${new Date(e.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <div class="event-content">
+                      <strong>${getEventTypeText(e.type)}:</strong> ${e.content}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+              
+              <!-- Действия -->
+              <div class="day-actions">
+                ${isAuditor(currentUser) ? `
+                  <button class="btn btn-outline" onclick="addTask(${weekId}, '${dateStr}')">✅ Задача</button>
+                  <button class="btn btn-outline" onclick="addInterview(${weekId}, '${dateStr}')">🎤 Интервью</button>
+                  <button class="btn btn-outline" onclick="addNote(${weekId}, '${dateStr}')">📝 Заметка</button>
+                ` : ''}
+                <button class="btn btn-warning" onclick="addMeeting(${weekId}, '${dateStr}')">📅 Встреча</button>
+              </div>
+              
+              <!-- Комментарии -->
+              <div class="comment-form">
+                <div class="form-group">
+                  <label>Комментарий / Вопрос:</label>
+                  <textarea class="form-control" placeholder="Напишите ваш комментарий..." 
+                    onkeypress="handleComment(event, ${weekId}, '${dateStr}')"></textarea>
+                </div>
+              </div>
+            </div>
+          `);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      
+      container.innerHTML = daysHTML.join('');
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function getDayName(dateStr) {
+      const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      return names[new Date(dateStr).getDay()];
+    }
+
+    function getEventTypeText(type) {
+      const types = {
+        task: 'Задача',
+        interview: 'Интервью',
+        note: 'Заметка',
+        meeting: 'Встреча',
+        comment: 'Комментарий',
+        scheme: 'Схема'
+      };
+      return types[type] || type;
+    }
+
+    // Глобальные функции
+    window.toggleWeek = async (weekId) => {
+      const el = document.getElementById(`days-${weekId}`);
+      const title = document.querySelector(`.week-title[onclick="toggleWeek(${weekId})"]`);
+      
+      if (el.style.display === 'grid') {
+        el.style.display = 'none';
+        title.classList.add('collapsed');
+      } else {
+        el.style.display = 'grid';
+        title.classList.remove('collapsed');
+        
+        if (!el.innerHTML.trim()) {
+          const weeks = await loadWeeks();
+          const week = weeks.find(w => w.id === weekId);
+          if (week) {
+            const events = await loadEvents(weekId);
+            renderDays(weekId, week, events);
+          }
+        }
+      }
+    };
+
+    window.editWeek = async (weekId) => {
+      const weeks = await loadWeeks();
+      const week = weeks.find(w => w.id === weekId);
+      if (!week) return;
+      
+      const title = prompt('Название недели:', week.title);
+      const start = prompt('Дата начала (ГГГГ-ММ-ДД):', week.start_date);
+      const end = prompt('Дата окончания (ГГГГ-ММ-ДД):', week.end_date);
+      
+      if (title && start && end) {
+        await updateWeek(weekId, { title, start_date: start, end_date: end });
+        showNotification('Неделя обновлена!');
+        initApp();
+      }
+    };
+
+    window.submitForApproval = async (weekId) => {
+      if (!confirm('Отправить план на согласование руководителю?')) return;
+      
+      await updateWeek(weekId, { status: 'approved', progress: 25 });
+      showNotification('План отправлен на согласование!');
+      initApp();
+    };
+
+    window.editDayPlan = async (weekId, dateStr) => {
+      const weeks = await loadWeeks();
+      const week = weeks.find(w => w.id === weekId);
+      if (!week) return;
+      
+      const currentPlan = week.plan?.[dateStr] || [];
+      const planText = prompt(
+        'Введите план на день (по одной задаче на строку):',
+        currentPlan.join('\n')
+      );
+      
+      if (planText !== null) {
+        const newPlan = planText.split('\n').filter(t => t.trim()).map(t => t.trim());
+        const updatedPlan = { ...(week.plan || {}), [dateStr]: newPlan };
+        await updateWeek(weekId, { plan: updatedPlan });
+        showNotification('План на день обновлён!');
+        // Обновляем только этот день
+        const events = await loadEvents(weekId);
+        renderDays(weekId, week, events);
+      }
+    };
+
+    window.addTask = (weekId, dateStr) => {
+      const content = prompt('Описание задачи:');
+      if (content) addEvent(weekId, dateStr, 'task', content);
+    };
+
+    window.addInterview = (weekId, dateStr) => {
+      const content = prompt('Расшифровка интервью:');
+      if (content) addEvent(weekId, dateStr, 'interview', content);
+    };
+
+    window.addNote = (weekId, dateStr) => {
+      const content = prompt('Заметка:');
+      if (content) addEvent(weekId, dateStr, 'note', content);
+    };
+
+    window.addMeeting = (weekId, dateStr) => {
+      const content = prompt('Повестка встречи:');
+      if (content) addEvent(weekId, dateStr, 'meeting', content);
+    };
+
+    window.handleComment = async (e, weekId, dateStr) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const textarea = e.target;
+        const content = textarea.value.trim();
+        if (content) {
+          await addEvent(weekId, dateStr, 'comment', content);
+          textarea.value = '';
+        }
+      }
+    };
+
+    async function addEvent(weekId, dateStr, type, content) {
+      try {
+        const author = isAuditor(currentUser) ? 'Климов Е.А.' : 'Руководитель';
+        await createEvent({ week_id: weekId, day_date: dateStr, type, author, content });
+        
+        // Перезагружаем события
+        const events = await loadEvents(weekId);
+        const weeks = await loadWeeks();
+        const week = weeks.find(w => w.id === weekId);
+        if (week) {
+          renderDays(weekId, week, events);
+        }
+        
+        showNotification('Событие добавлено!');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    window.createNewWeek = async () => {
+      const title = prompt('Название недели:');
+      const start = prompt('Дата начала (ГГГГ-ММ-ДД):');
+      const end = prompt('Дата окончания (ГГГГ-ММ-ДД):');
+      if (title && start && end) {
+        try {
+          await createWeek({ 
+            title, 
+            start_date: start, 
+            end_date: end,
+            plan: {}
+          });
+          showNotification('Неделя создана!');
+          initApp();
+        } catch (error) {
+          alert('Ошибка: ' + error.message);
+        }
+      }
+    };
+
+    window.logout = async () => {
+      await signOut();
+      currentUser = null;
+      showAuthScreen();
+    };
+
+    // Инициализация
+    async function initApp() {
+      try {
+        const weeks = await loadWeeks();
+        renderWeeks(weeks, currentUser);
+      } catch (error) {
+        document.getElementById('weeks-container').innerHTML = 
+          `<div class="card" style="color:red;">Ошибка загрузки данных: ${error.message}</div>`;
+      }
+    }
+
+    async function init() {
+      const userFromHash = await handleAuthHash();
+      if (userFromHash) {
+        currentUser = userFromHash;
+        showMainApp(currentUser);
+        initApp();
+        return;
+      }
+
+      const existingUser = await checkSession();
+      if (existingUser) {
+        currentUser = existingUser;
+        showMainApp(currentUser);
+        initApp();
+        return;
+      }
+
+      showAuthScreen();
+    }
+
+    // Обработчики
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('google-login')?.addEventListener('click', signInWithGoogle);
+      
+      document.getElementById('email-login')?.addEventListener('click', () => {
+        document.getElementById('email-form').classList.remove('hidden');
+      });
+      
+      document.getElementById('submit-email')?.addEventListener('click', async () => {
+        const email = document.getElementById('email-input')?.value.trim();
+        if (!email) return alert('Введите email');
+        
+        const error = await signInWithEmail(email);
+        if (error) {
+          alert('Ошибка: ' + error.message);
+        } else {
+          alert('Проверьте email для входа');
+        }
+      });
+      
+      init();
+    });
+  </script>
 </body>
 </html>
