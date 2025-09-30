@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CRM для аудита склада — Аудитор</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <h1>CRM для аудита склада — Октябрь 2025</h1>
+    <div class="subtitle">Панель аудитора</div>
+  </header>
+
+  <!-- Экран авторизации -->
+  <div id="auth-screen" class="auth-section">
+    <h2>Вход для аудитора</h2>
+    <button class="btn btn-google" id="google-login">Войти через Google</button>
+    <button class="btn btn-email" id="email-login">Войти по Email</button>
+    
+    <div id="email-form" class="hidden" style="margin-top: 20px;">
+      <input type="email" id="email-input" placeholder="Ваш email" style="width:100%; padding:12px; margin:10px 0; border:1px solid var(--border); border-radius:8px;">
+      <button class="btn btn-email" id="submit-email">Продолжить</button>
+    </div>
+  </div>
+
+  <!-- Основной интерфейс -->
+  <div id="main-app" class="hidden main-content">
+    <div class="user-info">
+      <div>Вы вошли как: <strong id="user-email"></strong></div>
+      <div>Роль: <span id="user-role"></span></div>
+      <button onclick="logout()" style="margin-top:10px; padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:6px;">Выйти</button>
+    </div>
+
+    <div id="weeks-container"></div>
+  </div>
+
+  <div id="notification"></div>
+
+  <footer>
+    CRM для аудита склада | Аудитор
+  </footer>
+
+  <script type="module">
+    import { 
+      supabase, 
+      handleAuthHash, 
+      checkSession, 
+      signInWithGoogle, 
+      signInWithEmail, 
+      signOut,
+      isAuditor 
+    } from './js/auth.js';
+    import { loadWeeks, approveWeek as approveWeekApi } from './js/weeks.js';
+    import { showAuthScreen, showMainApp, renderWeeks, showNotification } from './js/ui.js';
+
+    let currentUser = null;
+
+    // Глобальные функции для onclick
+    window.toggleWeek = (weekId) => {
+      const el = document.getElementById(`days-${weekId}`);
+      if (el) el.style.display = el.style.display === 'grid' ? 'none' : 'grid';
+    };
+
+    window.approveWeek = async (weekId) => {
+      if (!isAuditor(currentUser)) {
+        showNotification('Только руководитель может согласовывать!');
+        return;
+      }
+      
+      const success = await approveWeekApi(weekId);
+      if (success) {
+        showNotification('План согласован!');
+        initApp();
+      }
+    };
+
+    window.logout = async () => {
+      await signOut();
+      currentUser = null;
+      showAuthScreen();
+    };
+
+    // Инициализация
+    async function initApp() {
+      const weeks = await loadWeeks();
+      renderWeeks(weeks, currentUser);
+    }
+
+    async function init() {
+      // Обработка OAuth
+      const userFromHash = await handleAuthHash();
+      if (userFromHash) {
+        currentUser = userFromHash;
+        showMainApp(currentUser);
+        initApp();
+        return;
+      }
+
+      // Проверка сессии
+      const existingUser = await checkSession();
+      if (existingUser) {
+        currentUser = existingUser;
+        showMainApp(currentUser);
+        initApp();
+        return;
+      }
+
+      // Показать форму входа
+      showAuthScreen();
+    }
+
+    // Обработчики кнопок
+    document.getElementById('google-login')?.addEventListener('click', signInWithGoogle);
+    
+    document.getElementById('email-login')?.addEventListener('click', () => {
+      document.getElementById('email-form').classList.remove('hidden');
+    });
+    
+    document.getElementById('submit-email')?.addEventListener('click', async () => {
+      const email = document.getElementById('email-input')?.value.trim();
+      if (!email) return alert('Введите email');
+      
+      const error = await signInWithEmail(email);
+      if (error) {
+        alert('Ошибка: ' + error.message);
+      } else {
+        alert('Проверьте email для входа');
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
