@@ -4,105 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CRM для аудита склада — Аудитор</title>
+  <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-  <style>
-    :root {
-      --primary: #2563eb;
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --text: #0f172a;
-      --border: #e2e8f0;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --gray: #94a3b8;
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
-    body { background: var(--bg); color: var(--text); line-height: 1.6; padding: 20px; }
-    .hidden { display: none; }
-    header { text-align: center; margin-bottom: 30px; }
-    h1 { font-size: 28px; margin-bottom: 8px; }
-    .subtitle { color: var(--gray); font-size: 16px; }
-    .auth-section { 
-      background: var(--card); 
-      padding: 30px; 
-      border-radius: 16px; 
-      max-width: 500px; 
-      margin: 40px auto; 
-      text-align: center; 
-    }
-    .btn { 
-      padding: 12px 24px; 
-      border: none; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      font-size: 16px; 
-      display: inline-flex; 
-      align-items: center; 
-      gap: 8px; 
-    }
-    .btn-google { background: white; color: #333; border: 1px solid var(--border); }
-    .btn-email { background: var(--primary); color: white; margin-top: 16px; }
-    .user-info { 
-      margin: 20px 0; 
-      padding: 16px; 
-      background: #eff6ff; 
-      border-radius: 12px; 
-      text-align: center;
-    }
-    .week-card { 
-      background: var(--card); 
-      border-radius: 16px; 
-      padding: 24px; 
-      margin-bottom: 24px; 
-      border: 1px solid var(--border); 
-      box-shadow: 0 4px 6px rgba(0,0,0,0.03); 
-    }
-    .week-header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: flex-start; 
-      margin-bottom: 16px; 
-    }
-    .week-title { 
-      font-size: 20px; 
-      font-weight: 700; 
-      cursor: pointer; 
-    }
-    .week-status { 
-      padding: 4px 12px; 
-      border-radius: 20px; 
-      font-size: 14px; 
-    }
-    .status-draft { background: #fef3c7; color: #92400e; }
-    .status-approved { background: #dcfce7; color: #166534; }
-    .progress-bar { 
-      height: 8px; 
-      background: #e2e8f0; 
-      border-radius: 4px; 
-      margin: 12px 0; 
-      overflow: hidden; 
-    }
-    .progress-fill { 
-      height: 100%; 
-      background: var(--primary); 
-      width: 0%; 
-      transition: width 0.3s; 
-    }
-    #notification { 
-      position: fixed; 
-      top: 20px; 
-      right: 20px; 
-      background: var(--success); 
-      color: white; 
-      padding: 12px 20px; 
-      border-radius: 8px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 2000;
-      display: none;
-    }
-    .main-content { max-width: 1000px; margin: 0 auto; }
-    footer { text-align: center; margin-top: 40px; color: var(--gray); font-size: 14px; }
-  </style>
 </head>
 <body>
   <header>
@@ -134,7 +37,7 @@
     </div>
 
     <div id="weeks-container">
-      <p>Загрузка...</p>
+      <p>Загрузка данных...</p>
     </div>
   </div>
 
@@ -144,16 +47,6 @@
     CRM для аудита склада | Аудитор
   </footer>
 
-  <script>
-    // === КОНФИГУРАЦИЯ ===
-    const SUPABASE_URL = 'https://effpidrlccjmnxmbtkiz.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZnBpZHJsY2NqbW54bWJ0a2l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDQ5NDUsImV4cCI6MjA3NDcyMDk0NX0.SwJumspCD2x1Fsul4yw2LBL-OSj-4giXeBl99D1fFLg';
-    const AUDITOR_EMAIL = 'eklimov84@gmail.com';
-    const REDIRECT_URL = 'https://gakuzi.github.io/vira/auditor.html';
-    
-    // Инициализация Supabase
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    let currentUser = null;
-
-    // === ФУНКЦИИ
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
