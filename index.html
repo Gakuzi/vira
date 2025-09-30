@@ -71,104 +71,126 @@
     CRM для аудита склада | GitHub Pages + Supabase
   </footer>
 
-  <script>
-    // === КОНФИГУРАЦИЯ SUPABASE ===
-    const SUPABASE_URL = 'https://effpidrlccjmnxmbtkiz.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZnBpZHJsY2NqbW54bWJ0a2l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDQ5NDUsImV4cCI6MjA3NDcyMDk0NX0.SwJumspCD2x1Fsul4yw2LBL-OSj-4giXeBl99D1fFLg';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ <script>
+  // === КОНФИГУРАЦИЯ SUPABASE ===
+  const SUPABASE_URL = 'https://effpidrlccjmnxmbtkiz.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmZnBpZHJsY2NqbW54bWJ0a2l6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkxNDQ5NDUsImV4cCI6MjA3NDcyMDk0NX0.SwJumspCD2x1Fsul4yw2LBL-OSj-4giXeBl99D1fFLg';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Ваш email для роли аудитора
-    const AUDITOR_EMAIL = 'eklimov84@gmail.com';
+  const AUDITOR_EMAIL = 'eklimov84@gmail.com';
+  let currentUser = null;
+  let userRole = 'owner';
 
-    let currentUser = null;
-    let userRole = 'owner';
+  // === ОБРАБОТКА ХЕША ПОСЛЕ OAUTH ===
+  async function handleHash() {
+    const hash = window.location.hash.substring(1);
+    if (!hash) return;
 
-    // === Инициализация при загрузке ===
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Обработка OAuth-редиректа
-      const urlParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = urlParams.get('access_token');
-      
-      if (accessToken) {
-        // Убираем хеш из URL для чистоты
-        window.history.replaceState({}, document.title, window.location.pathname);
-        await initializeApp();
+    // Парсим параметры из хеша
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const expiresIn = params.get('expires_in');
+
+    if (accessToken && expiresIn) {
+      // Убираем хеш из URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Вручную устанавливаем сессию
+      const expiresAt = Math.floor(Date.now() / 1000) + parseInt(expiresIn);
+      const session = {
+        access_token: accessToken,
+        token_type: 'bearer',
+        expires_in: parseInt(expiresIn),
+        expires_at: expiresAt,
+        user: null // будет заполнен ниже
+      };
+
+      // Получаем данные пользователя
+      const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+      if (error) {
+        console.error('Ошибка получения пользователя:', error);
         return;
       }
 
-      // Проверка существующей сессии
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await handleAuthSuccess(data.session.user);
+      session.user = user;
+      await handleAuthSuccess(user);
+    }
+  }
+
+  // === УСПЕШНАЯ АВТОРИЗАЦИЯ ===
+  async function handleAuthSuccess(user) {
+    currentUser = user;
+    document.getElementById('user-email').textContent = user.email;
+    
+    userRole = (user.email.toLowerCase() === AUDITOR_EMAIL.toLowerCase()) ? 'auditor' : 'owner';
+    document.getElementById('user-role').textContent = 
+      userRole === 'auditor' ? 'Аудитор (полный доступ)' : 'Руководитель (наблюдатель)';
+    
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+  }
+
+  // === ПРОВЕРКА СУЩЕСТВУЮЩЕЙ СЕССИИ ===
+  async function checkExistingSession() {
+    const { data } = await supabase.auth.getSession();
+    if (data.session) {
+      await handleAuthSuccess(data.session.user);
+      return true;
+    }
+    return false;
+  }
+
+  // === ИНИЦИАЛИЗАЦИЯ ===
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Сначала проверяем хеш (после редиректа OAuth)
+    await handleHash();
+    
+    // Если хеша не было — проверяем существующую сессию
+    if (!currentUser) {
+      await checkExistingSession();
+    }
+  });
+
+  // === КНОПКИ АВТОРИЗАЦИИ ===
+  document.getElementById('google-login')?.addEventListener('click', () => {
+    supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://gakuzi.github.io/vira/'
       }
     });
+  });
 
-    // === Обработчики кнопок ===
-    document.getElementById('google-login').addEventListener('click', () => {
-      supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: 'https://gakuzi.github.io/vira/'
-        }
-      });
-    });
+  document.getElementById('email-login')?.addEventListener('click', () => {
+    document.getElementById('email-form').classList.remove('hidden');
+  });
 
-    document.getElementById('email-login').addEventListener('click', () => {
-      document.getElementById('email-form').classList.remove('hidden');
-    });
-
-    document.getElementById('submit-email').addEventListener('click', async () => {
-      const email = document.getElementById('email-input').value.trim();
-      if (!email) return alert('Введите email');
-      
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: 'https://gakuzi.github.io/vira/'
-        }
-      });
-      
-      if (error) {
-        alert('Ошибка: ' + error.message);
-      } else {
-        alert('Проверьте email и перейдите по ссылке для входа');
+  document.getElementById('submit-email')?.addEventListener('click', async () => {
+    const email = document.getElementById('email-input')?.value.trim();
+    if (!email) return alert('Введите email');
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: 'https://gakuzi.github.io/vira/'
       }
     });
-
-    // === Успешная авторизация ===
-    async function handleAuthSuccess(user) {
-      currentUser = user;
-      document.getElementById('user-email').textContent = user.email;
-      
-      // Определяем роль
-      userRole = (user.email.toLowerCase() === AUDITOR_EMAIL.toLowerCase()) ? 'auditor' : 'owner';
-      document.getElementById('user-role').textContent = 
-        userRole === 'auditor' ? 'Аудитор (полный доступ)' : 'Руководитель (наблюдатель)';
-      
-      // Показываем интерфейс
-      document.getElementById('auth-screen').classList.add('hidden');
-      document.getElementById('main-app').classList.remove('hidden');
+    
+    if (error) {
+      alert('Ошибка: ' + error.message);
+    } else {
+      alert('Проверьте email и перейдите по ссылке для входа');
     }
+  });
 
-    // === Выход ===
-    async function logout() {
-      await supabase.auth.signOut();
-      currentUser = null;
-      userRole = 'owner';
-      document.getElementById('main-app').classList.add('hidden');
-      document.getElementById('auth-screen').classList.remove('hidden');
-    }
-
-    // === Инициализация приложения после входа ===
-    async function initializeApp() {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        await handleAuthSuccess(data.session.user);
-      } else {
-        // Если сессии нет — показываем форму входа
-        document.getElementById('auth-screen').classList.remove('hidden');
-      }
-    }
-  </script>
+  // === ВЫХОД ===
+  window.logout = async () => {
+    await supabase.auth.signOut();
+    currentUser = null;
+    userRole = 'owner';
+    document.getElementById('main-app').classList.add('hidden');
+    document.getElementById('auth-screen').classList.remove('hidden');
+  };
+</script>
 </body>
 </html>
