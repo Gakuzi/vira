@@ -135,10 +135,14 @@
     // === Инициализация ===
     document.addEventListener('DOMContentLoaded', async () => {
       // Проверяем сессию
-      const {  { session } } = await supabase.auth.getSession();
-      if (session) {
-        await handleAuthSuccess(session.user);
-      }
+      const { data, error } = await supabase.auth.getSession();
+if (error) {
+  console.error('Ошибка сессии:', error);
+  return;
+}
+if (data.session) {
+  // обработка сессии
+}
       
       // Обработка редиректа после OAuth
       const urlParams = new URLSearchParams(window.location.search);
