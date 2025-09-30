@@ -3,62 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>CRM для аудита склада</title>
+  <title>CRM для аудита склада — Руководитель</title>
   <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>CRM для аудита склада — Октябрь 2025</h1>
-    <div class="subtitle">Панель руководителя</div>
-  </header>
+  <div class="container">
+    <div class="header">
+      <h1>CRM для аудита склада — Октябрь 2025</h1>
+      <div class="subtitle">Панель руководителя</div>
+    </div>
 
-  <div class="main-content">
     <div class="user-info">
-      <div>Режим: <strong>Руководитель</strong></div>
-      <div>Вы можете просматривать план, комментировать и назначать встречи</div>
-      <div style="margin-top:10px; font-size:12px; color:#666;">
-        <a href="auditor.html" style="color:#444;">Вход для аудитора</a>
+      <p>Режим: <strong>Руководитель</strong></p>
+      <p>Вы можете просматривать всю работу аудитора, комментировать и планировать встречи</p>
+      <div style="margin-top:10px; font-size:14px; color:#64748b;">
+        <a href="auditor.html" style="color:#3b82f6; text-decoration:underline;">Вход для аудитора</a>
       </div>
     </div>
 
-    <div id="weeks-container">
-      <p>Загрузка данных...</p>
+    <div class="card">
+      <div id="weeks-container">
+        <p>Загрузка данных...</p>
+      </div>
     </div>
+
+    <div class="notification" id="notification"></div>
   </div>
 
-  <div id="notification"></div>
-
-  <footer>
-    CRM для аудита склада | GitHub Pages + Supabase
-  </footer>
+  <div class="footer">
+    CRM для аудита склада | Руководитель
+  </div>
 
   <script type="module">
     import { SUPABASE_URL, SUPABASE_ANON_KEY } from './js/config.js';
-    import { loadWeeks, loadEvents } from './js/db.js';
-    import { renderWeeks, renderDays } from './js/ui.js';
+    import { loadWeeks, loadEvents, createEvent } from './js/db.js';
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function init() {
-      try {
-        const weeks = await loadWeeks();
-        renderWeeks(weeks, { email: 'owner@example.com' });
-      } catch (error) {
-        document.getElementById('weeks-container').innerHTML = 
-          `<p style="color:red;">Ошибка: ${error.message}</p>`;
+    function showNotification(message) {
+      const notif = document.getElementById('notification');
+      if (notif) {
+        notif.textContent = message;
+        notif.style.display = 'block';
+        setTimeout(() => notif.style.display = 'none', 5000);
       }
     }
 
-    // UI функции для руководителя
+    // Рендеринг недель (без кнопок редактирования)
+    async function renderWeeks(weeks) {
+      const container = document.getElementById('weeks-container');
+      if (!container) return;
+      
+      container.innerHTML = weeks.map(week => `
+        <div class="card">
+          <div class="week-header">
+            <div class="week-title" onclick="toggleWeek(${week.id})">
+              📅 ${week.title} (${week.start_date} – ${week.end_date})
+            </div>
+            <div class="week-meta">
+              <span class="status-badge status-${week.status}">${getStatusText(week.status)}</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${week.progress}%"></div>
+          </div>
+          <div class="days-grid" id="days-${week.id}" style="display:none;"></div>
+        </div>
+      `).join('');
+    }
+
+    function getStatusText(status) {
+      const texts = {
+        draft: 'Черновик',
+        approved: 'Согласовано',
+        in_progress: 'В работе',
+        completed: 'Завершено'
+      };
+      return texts[status] || status;
+    }
+
+    // Рендеринг дней (без редактирования плана)
+    async function renderDays(weekId, week, events) {
+      const container = document.getElementById(`days-${weekId}`);
+      if (!container) return;
+      
+      const daysMap = {};
+      events.forEach(e => {
+        if (!daysMap[e.day_date]) daysMap[e.day_date] = [];
+        daysMap[e.day_date].push(e);
+      });
+      
+      const start = new Date(week.start_date);
+      const end = new Date(week.end_date);
+      let current = new Date(start);
+      const daysHTML = [];
+      
+      while (current <= end) {
+        const day = current.getDay();
+        if (day !== 0 && day !== 6) {
+          const dateStr = current.toISOString().split('T')[0];
+          const plan = week.plan?.[dateStr] || [];
+          
+          daysHTML.push(`
+            <div class="day-card">
+              <div class="day-header">
+                <div class="day-date">${formatDate(dateStr)} (${getDayName(dateStr)})</div>
+              </div>
+              
+              ${plan.length ? `
+                <div style="margin-bottom: 16px;">
+                  <strong>План:</strong>
+                  <ul style="margin-top: 8px; padding-left: 20px;">
+                    ${plan.map(task => `<li>${task}</li>`).join('')}
+                  </ul>
+                </div>
+              ` : '<p style="color:#64748b; font-style:italic;">План не задан</p>'}
+              
+              <div id="events-${weekId}-${dateStr}">
+                ${(daysMap[dateStr] || []).map(e => `
+                  <div class="event">
+                    <div class="event-header">
+                      <span class="event-author">${e.author}</span>
+                      <span class="event-time">${new Date(e.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <div class="event-content">
+                      <strong>${getEventTypeText(e.type)}:</strong> ${e.content}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+              
+              <div class="day-actions">
+                <button class="btn btn-warning" onclick="addMeeting(${weekId}, '${dateStr}')">📅 Встреча</button>
+              </div>
+              
+              <div class="comment-form">
+                <div class="form-group">
+                  <label>Комментарий / Вопрос:</label>
+                  <textarea class="form-control" placeholder="Напишите ваш комментарий..." 
+                    onkeypress="handleComment(event, ${weekId}, '${dateStr}')"></textarea>
+                </div>
+              </div>
+            </div>
+          `);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      
+      container.innerHTML = daysHTML.join('');
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function getDayName(dateStr) {
+      const names = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      return names[new Date(dateStr).getDay()];
+    }
+
+    function getEventTypeText(type) {
+      const types = {
+        task: 'Задача',
+        interview: 'Интервью',
+        note: 'Заметка',
+        meeting: 'Встреча',
+        comment: 'Комментарий',
+        scheme: 'Схема'
+      };
+      return types[type] || type;
+    }
+
+    // Глобальные функции
     window.toggleWeek = async (weekId) => {
       const el = document.getElementById(`days-${weekId}`);
-      el.style.display = el.style.display === 'grid' ? 'none' : 'grid';
+      const title = document.querySelector(`.week-title[onclick="toggleWeek(${weekId})"]`);
       
-      if (!el.innerHTML.trim()) {
-        const events = await loadEvents(weekId);
-        renderDays(weekId, events);
+      if (el.style.display === 'grid') {
+        el.style.display = 'none';
+        title.classList.add('collapsed');
+      } else {
+        el.style.display = 'grid';
+        title.classList.remove('collapsed');
+        
+        if (!el.innerHTML.trim()) {
+          const weeks = await loadWeeks();
+          const week = weeks.find(w => w.id === weekId);
+          if (week) {
+            const events = await loadEvents(weekId);
+            renderDays(weekId, week, events);
+          }
+        }
       }
+    };
+
+    window.addMeeting = (weekId, dateStr) => {
+      const content = prompt('Повестка встречи:');
+      if (content) addEvent(weekId, dateStr, 'meeting', content);
     };
 
     window.handleComment = async (e, weekId, dateStr) => {
@@ -67,14 +211,41 @@
         const textarea = e.target;
         const content = textarea.value.trim();
         if (content) {
-          // Здесь можно добавить вызов createEvent
+          await addEvent(weekId, dateStr, 'comment', content);
           textarea.value = '';
-          alert('Комментарий добавлен (в демо-режиме)');
         }
       }
     };
 
-    init();
+    async function addEvent(weekId, dateStr, type, content) {
+      try {
+        await createEvent({ week_id: weekId, day_date: dateStr, type, author: 'Руководитель', content });
+        
+        const events = await loadEvents(weekId);
+        const weeks = await loadWeeks();
+        const week = weeks.find(w => w.id === weekId);
+        if (week) {
+          renderDays(weekId, week, events);
+        }
+        
+        showNotification('Сообщение отправлено!');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Инициализация
+    async function init() {
+      try {
+        const weeks = await loadWeeks();
+        renderWeeks(weeks);
+      } catch (error) {
+        document.getElementById('weeks-container').innerHTML = 
+          `<div class="card" style="color:red;">Ошибка загрузки данных: ${error.message}</div>`;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
 </html>
