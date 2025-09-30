@@ -4,6 +4,3 @@ export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 export const AUDITOR_EMAIL = 'eklimov84@gmail.com';
 export const REDIRECT_URL = 'https://gakuzi.github.io/vira/auditor.html';
 
-// Для Telegram-уведомлений (настройте бота и вставьте сюда)
-export const TELEGRAM_BOT_TOKEN = '7930584230:AAFfR2XnKjTrLsP-LrWICLlj83c2nNG41-8';
-export const TELEGRAM_CHAT_ID = '55570186';
